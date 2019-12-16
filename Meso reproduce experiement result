@@ -1,0 +1,19 @@
+Meso reproduce experiement result
+
+image classification result for Deepfake
+
+Meso-4
+Forged classification score: 0.9040421792618629
+Real classification score: 0.8790795961493308
+Total classification score: 0.8890765765765766
+
+MesoInception-4
+Forged classification score: 0.934622144112478
+Real classification score: 0.8999765203099319
+Total classification score: 0.9138513513513513
+
+self-trained MesoInception-4
+batchsize = 50, epoch = 10
+Forged classification score: 0.9662565905096661
+Real classification score: 0.749236910072787
+Total classification score: 0.8361486486486487
