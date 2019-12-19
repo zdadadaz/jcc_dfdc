@@ -12,8 +12,15 @@ Forged classification score: 0.934622144112478
 Real classification score: 0.8999765203099319
 Total classification score: 0.9138513513513513
 
-self-trained MesoInception-4
+self-trained MesoInception-4, no validation 20191214
 batchsize = 50, epoch = 10
 Forged classification score: 0.9662565905096661
 Real classification score: 0.749236910072787
 Total classification score: 0.8361486486486487
+
+
+self-trained MesoInception-4, with validation 20191216
+batchsize = 50, epoch = 10
+Forged classification score: 0.762390158172232
+Real classification score: 0.9521014322610941
+Total classification score: 0.8761261261261262

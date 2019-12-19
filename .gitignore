@@ -108,3 +108,5 @@ saved_weights/
 deepfake_database/*
 test_videos/*
 test_images/*
+
+*.jpg

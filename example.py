@@ -12,7 +12,7 @@ from keras.preprocessing.image import ImageDataGenerator
 # classifier.load('weights/model.h5')
 
 classifier = MesoInception4()
-classifier.load('weights/model.h5')
+classifier.load('weights/mesoInception_DF_m20191216.h5')
 
 # 2 - Minimial image generator
 # We did use it to read and compute the prediction by batchs on test videos

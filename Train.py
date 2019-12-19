@@ -15,12 +15,27 @@ epochs=10
 batch_size=50
 
 dataGenerator = ImageDataGenerator(rescale=1./255)
+# dataGenerator = ImageDataGenerator(rescale=1./255,validation_split=0.3)
 generator = dataGenerator.flow_from_directory(
         'deepfake_database/train_test',
         target_size=(256, 256),
         batch_size=batch_size,
         class_mode='binary',
         subset='training')
+val_generator = dataGenerator.flow_from_directory(
+        'deepfake_database/validation',
+        target_size=(256, 256),
+        batch_size=batch_size,
+        class_mode='binary',
+        subset='validation')
+# =============================================================================
+# val_generator = dataGenerator.flow_from_directory(
+#         'deepfake_database/train_test',
+#         target_size=(256, 256),
+#         batch_size=batch_size,
+#         class_mode='binary',
+#         subset='validation')
+# =============================================================================
 
 # Train
 class TrackerCallback(Callback):
@@ -45,7 +60,26 @@ class TrackerCallback(Callback):
 tracker_cb = TrackerCallback()
 
 
-classifier.fit_generator(generator,int(generator.samples/batch_size),epochs,[tracker_cb])
+history = classifier.fit_generator(generator,int(generator.samples/batch_size),epochs, \
+                        [tracker_cb],val_generator,int(val_generator.samples/batch_size))
+    
 # assert tracker_cb.trained_epochs == [0, 1, 2, 3, 4]
 
-classifier.saveMode("model.h5")
+print(history.history.keys())
+# summarize history for accuracy
+plt.plot(history.history['acc'])
+plt.plot(history.history['val_acc'])
+plt.title('model acc')
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.show()
+# summarize history for loss
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('model loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.show()
+# classifier.saveMode("model.h5")

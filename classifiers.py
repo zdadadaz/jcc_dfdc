@@ -21,8 +21,10 @@ class Classifier:
     
     def load(self, path):
         self.model.load_weights(path)
-    def fit_generator(self,generator,steps_per_epoch, epochs,callbacks):
-        self.model.fit_generator(generator,steps_per_epoch=steps_per_epoch, epochs=epochs,callbacks=callbacks)
+
+    def fit_generator(self,generator,steps_per_epoch, epochs,callbacks, val_gen, val_step_per_epochs):
+        return self.model.fit_generator(generator,steps_per_epoch=steps_per_epoch, epochs=epochs,callbacks=callbacks, \
+                                        validation_data=val_gen, validation_steps=val_step_per_epochs)
     
     def saveMode(self, outputName):
         self.model.save_weights(outputName)
