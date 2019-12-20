@@ -110,3 +110,5 @@ test_videos/*
 test_images/*
 
 *.jpg
+fb_db/*
+weights/*

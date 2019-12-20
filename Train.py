@@ -11,7 +11,7 @@ from keras.callbacks import Callback
 classifier = MesoInception4()
 # classifier.load('weights/MesoInception_DF')
 
-epochs=10
+epochs=1
 batch_size=50
 
 dataGenerator = ImageDataGenerator(rescale=1./255)
@@ -28,14 +28,12 @@ val_generator = dataGenerator.flow_from_directory(
         batch_size=batch_size,
         class_mode='binary',
         subset='validation')
-# =============================================================================
 # val_generator = dataGenerator.flow_from_directory(
 #         'deepfake_database/train_test',
 #         target_size=(256, 256),
 #         batch_size=batch_size,
 #         class_mode='binary',
 #         subset='validation')
-# =============================================================================
 
 # Train
 class TrackerCallback(Callback):

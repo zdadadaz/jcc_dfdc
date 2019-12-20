@@ -312,23 +312,17 @@ def compute_accuracy(classifier, dirname, frame_subsample_count = 30):
         predictions[vid[:-4]] = (np.mean(p > 0.5), p)
     return predictions
 
-def extract_face_from_video(dirname, out_dirname, frame_subsample_count = 30):
-    filenames = [f for f in listdir(dirname) if isfile(join(dirname, f)) and ((f[-4:] == '.mp4') or (f[-4:] == '.avi') or (f[-4:] == '.mov'))]
-    predictions = {}
-    batch_size = 5
+def extract_face_from_video(dirname, vid, out_dirname, frame_subsample_count = 30):
+    batch_size = 1
+    # Compute face locations and store them in the face finder
+    face_finder = FaceFinder(join(dirname, vid), load_first_face = False)
+    skipstep = max(floor(face_finder.length / frame_subsample_count), 0)
+    face_finder.find_faces(resize=0.5, skipstep = skipstep)
     
-    for vid in filenames:
-        print('Dealing with video ', vid)
-        
-        # Compute face locations and store them in the face finder
-        face_finder = FaceFinder(join(dirname, vid), load_first_face = False)
-        skipstep = max(floor(face_finder.length / frame_subsample_count), 0)
-        face_finder.find_faces(resize=0.5, skipstep = skipstep)
-        
-        print('Predicting ', vid)
-        gen = FaceBatchGenerator(face_finder)
-        n = len(gen.finder.coordinates.items())
-        for epoch in range(n // batch_size + 1):
-            face_batch = gen.next_batch(batch_size = batch_size)
-            if len(face_batch)>0:
-                imageio.imwrite(out_dirname +"/" + vid + "_" + str(epoch) + ".jpg",face_batch[0],'jpg')
+    gen = FaceBatchGenerator(face_finder)
+    n = len(gen.finder.coordinates.items())
+    for epoch in range(n // batch_size + 1):
+        face_batch = gen.next_batch(batch_size = batch_size)
+        if len(face_batch)>0:
+            output_name= vid + "_" + str(epoch) +  ".jpg"
+            imageio.imwrite(join(out_dirname,output_name),face_batch[0],'jpg')
