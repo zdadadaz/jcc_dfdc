@@ -9,27 +9,29 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import Callback
 
 classifier = MesoInception4()
-# classifier.load('weights/MesoInception_DF')
+classifier.load('model.h5')
 
-epochs=1
+epochs=10
 batch_size=50
 
 dataGenerator = ImageDataGenerator(rescale=1./255)
-# dataGenerator = ImageDataGenerator(rescale=1./255,validation_split=0.3)
+val_dataGenerator = ImageDataGenerator(rescale=1./255)
+# dataGenerator = ImageDataGenerator(rescale=1./255,validation_split=0.1)
 generator = dataGenerator.flow_from_directory(
         'deepfake_database/train_test',
+        # 'fb_db/train',
         target_size=(256, 256),
         batch_size=batch_size,
         class_mode='binary',
         subset='training')
-val_generator = dataGenerator.flow_from_directory(
+val_generator = val_dataGenerator.flow_from_directory(
         'deepfake_database/validation',
         target_size=(256, 256),
         batch_size=batch_size,
-        class_mode='binary',
-        subset='validation')
+        class_mode='binary')
 # val_generator = dataGenerator.flow_from_directory(
 #         'deepfake_database/train_test',
+#         # 'fb_db/train',
 #         target_size=(256, 256),
 #         batch_size=batch_size,
 #         class_mode='binary',
