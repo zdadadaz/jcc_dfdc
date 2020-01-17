@@ -7,25 +7,59 @@ import matplotlib.image as mpimg
 
 from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import Callback
+from keras.callbacks import ModelCheckpoint
+import cv2
+import random
+
 
 classifier = MesoInception4()
-classifier.load('model.h5')
+# classifier.load('org_weights/M')
 
-epochs=10
+# model = classifier.init_model()
+# print(model.summary())
+
+epochs=40
 batch_size=50
 
-dataGenerator = ImageDataGenerator(rescale=1./255)
-val_dataGenerator = ImageDataGenerator(rescale=1./255)
+def blur(img):
+    if random.random() <0.2:
+        return (cv2.blur(img,(5,5))) 
+    else:
+        return img
+    
+def dft2(img):
+    out = np.zeros(img.shape)
+    def dft2_onechennel(image):
+        f = np.fft.fft2(image)
+        fshift = np.fft.fftshift(f)
+        a = np.log(np.abs(fshift)+1e-9)
+        a = a - a.mean()
+        a = (a+1e-9) / (a.max()+1e-9)
+        return a
+    for i in range(3):
+        out[:,:,i] = dft2_onechennel(img[:,:,i])
+    return out
+
+dataGenerator = ImageDataGenerator(rescale=1./255,
+                                   preprocessing_function = dft2 )
+                                    # horizontal_flip=True,
+                                    # # width_shift_range=50,
+                                    # # height_shift_range=50,
+                                    # zoom_range =0.2,
+                                    # preprocessing_function = blur)
+val_dataGenerator = ImageDataGenerator(rescale=1./255,
+                                       preprocessing_function = dft2)
 # dataGenerator = ImageDataGenerator(rescale=1./255,validation_split=0.1)
 generator = dataGenerator.flow_from_directory(
-        'deepfake_database/train_test',
-        # 'fb_db/train',
+        # 'deepfake_database/train_test',
+        'db_small/train',
         target_size=(256, 256),
         batch_size=batch_size,
         class_mode='binary',
         subset='training')
 val_generator = val_dataGenerator.flow_from_directory(
-        'deepfake_database/validation',
+        # 'deepfake_database/validation',
+        'db_small/val',
         target_size=(256, 256),
         batch_size=batch_size,
         class_mode='binary')
@@ -59,9 +93,13 @@ class TrackerCallback(Callback):
 
 tracker_cb = TrackerCallback()
 
+# checkpoint
+filepath="./weight_tmp/meso4inc-{epoch:02d}-{val_loss:.2f}.hdf5"
+checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
+callbacks_list = [checkpoint]
 
 history = classifier.fit_generator(generator,int(generator.samples/batch_size),epochs, \
-                        [tracker_cb],val_generator,int(val_generator.samples/batch_size))
+                        callbacks_list,val_generator,int(val_generator.samples/batch_size))
     
 # assert tracker_cb.trained_epochs == [0, 1, 2, 3, 4]
 

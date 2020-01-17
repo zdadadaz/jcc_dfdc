@@ -1,0 +1,9 @@
+unzip "name_*.zip"
+
+cuda out of memory
+rm -rf ~/./nv
+or 
+sudo python xxx.py
+
+13:23
+13:42

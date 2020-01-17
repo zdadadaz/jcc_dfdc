@@ -112,3 +112,10 @@ test_images/*
 *.jpg
 fb_db/*
 weights/*
+submission/*
+submission*
+*debug.csv
+weight_tmp/*
+structure/*
+result/*
+metadata*

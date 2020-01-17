@@ -1,8 +1,10 @@
 # -*- coding:utf-8 -*-
 
 from keras.models import Model as KerasModel
-from keras.layers import Input, Dense, Flatten, Conv2D, MaxPooling2D, BatchNormalization, Dropout, Reshape, Concatenate, LeakyReLU
-from keras.optimizers import Adam
+from keras.layers import Input, Dense, Flatten, Conv2D, MaxPooling2D, BatchNormalization, Dropout, Concatenate, LeakyReLU, GlobalMaxPooling2D, Reshape
+
+from keras.optimizers import Adam, SGD
+from models.SpatialPyramidPooling import SpatialPyramidPooling
 
 IMGWIDTH = 256
 
@@ -87,11 +89,13 @@ class Meso4(Classifier):
 
 
 class MesoInception4(Classifier):
-    def __init__(self, learning_rate = 0.001):
-        self.model = self.init_model()
+    def __init__(self, learning_rate = 0.001, include_top = True):
+        self.model = self.init_model(include_top)
         optimizer = Adam(lr = learning_rate)
-        self.model.compile(optimizer = optimizer, loss = 'mean_squared_error', metrics = ['accuracy'])
-    
+        # self.model.compile(optimizer = optimizer, loss = 'mean_squared_error', metrics = ['accuracy'])
+        # optimizer = SGD(lr=learning_rate, momentum=0.9)
+        self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
+       
     def InceptionLayer(self, a, b, c, d):
         def func(x):
             x1 = Conv2D(a, (1, 1), padding='same', activation='relu')(x)
@@ -110,7 +114,7 @@ class MesoInception4(Classifier):
             return y
         return func
     
-    def init_model(self):
+    def init_model(self, include_top = True):
         x = Input(shape = (IMGWIDTH, IMGWIDTH, 3))
         
         x1 = self.InceptionLayer(1, 4, 4, 2)(x)
@@ -129,11 +133,37 @@ class MesoInception4(Classifier):
         x4 = BatchNormalization()(x4)
         x4 = MaxPooling2D(pool_size=(4, 4), padding='same')(x4)
         
-        y = Flatten()(x4)
-        y = Dropout(0.5)(y)
-        y = Dense(16)(y)
-        y = LeakyReLU(alpha=0.1)(y)
-        y = Dropout(0.5)(y)
-        y = Dense(1, activation = 'sigmoid')(y)
-
+        
+        if include_top:
+            y = Flatten()(x4)
+            # y = SpatialPyramidPooling([1, 2, 4])(x4)
+            y = Dropout(0.5)(y)
+            y = Dense(16)(y)
+            y = LeakyReLU(alpha=0.1)(y)
+            y = Dropout(0.5)(y)
+            y = Dense(1, activation = 'sigmoid')(y)
+        else:
+            y = GlobalMaxPooling2D()(x4)
+        
+        
         return KerasModel(inputs = x, outputs = y)
+
+class Xception(Classifier):
+    def __init__(self, learning_rate = 0.001):
+        self.model = self.init_model()
+        optimizer = Adam(lr = learning_rate)
+        self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
+
+class meso_lstm(Classifier):
+    def __init__(self, learning_rate = 0.001):
+        self.model = self.init_model()
+        optimizer = Adam(lr = learning_rate)
+        self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
+    
+    def init_model(self):
+        x = Input(shape = (IMGWIDTH, IMGWIDTH, 3))
+        x2 = Conv2D(16, (5, 5), padding='same', activation = 'relu')(x)
+        # x2 = BatchNormalization()(x2)
+        # x2 = MaxPooling2D(pool_size=(2, 2), padding='same')(x2)
+        # y = Flatten()(x2)
+        # y = Reshape((6, 2))(x2)

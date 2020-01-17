@@ -14,8 +14,8 @@ def read_existed_files(out_dirname):
                     existed_filenames.add(f.split('.')[0])
     return existed_filenames
 
-path_json = './../fb_whole/dfdc_train_part_0/metadata.json'
-dirname = './../fb_whole/dfdc_train_part_0'
+path_json = './../fb_whole/dfdc_train_part_19/metadata.json'
+dirname = './../fb_whole/dfdc_train_part_19'
 out_dirname = 'fb_db'
 with open(path_json) as json_file:
     data = json.load(json_file)

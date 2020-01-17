@@ -326,3 +326,8 @@ def extract_face_from_video(dirname, vid, out_dirname, frame_subsample_count = 3
         if len(face_batch)>0:
             output_name= vid + "_" + str(epoch) +  ".jpg"
             imageio.imwrite(join(out_dirname,output_name),face_batch[0],'jpg')
+            
+def compute_onevideo_accuracy(classifier, face_finder):
+    gen = FaceBatchGenerator(face_finder)
+    p = predict_faces(gen, classifier)
+    return (np.mean(p > 0.5), p)
