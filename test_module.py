@@ -55,7 +55,7 @@ class Test():
     
     def predict(self, classifier, datasets, preprocess= False, save = False):
         submit = []
-        save_interval = self.save_interval # perform face detection every {save_interval} frames
+        save_interval = self.save_interval
         total_num = len(datasets)
         for v in range(total_num):
             print("index: "+str(v)+" /"+ str(total_num))
@@ -73,9 +73,9 @@ class Test():
                         _, image = reader.read()
                         if i % save_interval != 0:
                             continue
-                        if cr == 0:
-                            image = image[0: int(crop_size[0]), int(cur_size[1]/2)-int(crop_size[1]/2): int(cur_size[1]/2)+int(crop_size[1]/2)]
                         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                        if cr == 0:
+                            image = image[(int(cur_size[1]/2)-int(crop_size[1]/2)): (int(cur_size[1]/2)+int(crop_size[1]/2)),0: int(crop_size[0]), :]
                         images.append(image)
                     reader.release()
                     images = np.stack(images)

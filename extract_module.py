@@ -61,8 +61,7 @@ class Extract_image():
                 self.capture_image(vid,out_filename)
     
     def capture_image(self, vid, out_filename):
-        save_interval = self.save_interval # perform face detection every {save_interval} frames
-        # try:
+        reader = cv2.VideoCapture(os.path.join(self.dir_lists, vid))
         # read video
         cur_size = (1080,1920)
         crop_size_iist = [(720, 1280), (1080,1920)]
@@ -70,13 +69,17 @@ class Extract_image():
             crop_size = crop_size_iist[cr]
             reader = cv2.VideoCapture(os.path.join(self.dir_lists, vid))
             images = []
+            if int(reader.get(cv2.CAP_PROP_FRAME_COUNT)) % self.save_interval <= 2:
+                save_interval = self.save_interval-1 # perform face detection every {save_interval} frames
+            else:
+                save_interval = self.save_interval
             for i in range(int(reader.get(cv2.CAP_PROP_FRAME_COUNT))):
                 _, image = reader.read()
                 if i % save_interval != 0 and i % save_interval != 1 and i % save_interval != 2:
                     continue
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 if cr == 0:
-                    image = image[0: int(crop_size[0]), int(cur_size[1]/2)-int(crop_size[1]/2): int(cur_size[1]/2)+int(crop_size[1]/2)]
+                    image = image[(int(cur_size[1]/2)-int(crop_size[1]/2)): (int(cur_size[1]/2)+int(crop_size[1]/2)),0: int(crop_size[0]), :]
                 images.append(image)
             reader.release()
             images = np.stack(images)
@@ -130,29 +133,30 @@ class Extract_image():
         return faces
 
 
-
-folderName="dfdc_train_part_21"
-
-
-path_json = "./../fb_whole/"+ folderName +"/metadata.json"
-dirname = './../fb_whole/'+folderName
-out_dirname = './fb_db/'+folderName
-
-if not os.path.isfile(out_dirname):
-    cmd = 'mkdir ' + out_dirname
-    os.system(cmd)
-
-tmp_dir = out_dirname + "/FAKE"
-if not os.path.isfile(tmp_dir):
-    cmd = 'mkdir ' + tmp_dir
-    os.system(cmd)
-
-tmp_dir = out_dirname + "/REAL"
-if not os.path.isfile(tmp_dir):
-    cmd = 'mkdir ' + tmp_dir
-    os.system(cmd)
-
-start = time.time()
-Extract_image(path_json, dirname, out_dirname)
-elapsed = time.time() - start
-print(f', {elapsed:.3f} seconds')
+folderNames = ["dfdc_train_part_24"]
+for folderName in folderNames:
+    # folderName="dfdc_train_part_21"
+    
+    
+    path_json = "./../fb_whole/"+ folderName +"/metadata.json"
+    dirname = './../fb_whole/'+folderName
+    out_dirname = './fb_db/'+folderName
+    
+    if not os.path.isfile(out_dirname):
+        cmd = 'mkdir ' + out_dirname
+        os.system(cmd)
+    
+    tmp_dir = out_dirname + "/FAKE"
+    if not os.path.isfile(tmp_dir):
+        cmd = 'mkdir ' + tmp_dir
+        os.system(cmd)
+    
+    tmp_dir = out_dirname + "/REAL"
+    if not os.path.isfile(tmp_dir):
+        cmd = 'mkdir ' + tmp_dir
+        os.system(cmd)
+    
+    # start = time.time()
+    Extract_image(path_json, dirname, out_dirname)
+    # elapsed = time.time() - start
+    # print(f', {elapsed:.3f} seconds')
