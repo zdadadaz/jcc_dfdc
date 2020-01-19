@@ -24,8 +24,8 @@ class Classifier:
     def load(self, path):
         self.model.load_weights(path)
 
-    def fit_generator(self,generator,steps_per_epoch, epochs,callbacks, val_gen, val_step_per_epochs):
-        return self.model.fit_generator(generator,steps_per_epoch=steps_per_epoch, epochs=epochs,callbacks=callbacks, validation_data=val_gen, validation_steps=val_step_per_epochs)
+    def fit_generator(self,generator,steps_per_epoch, epochs,callbacks, val_gen, val_step_per_epochs, use_multiprocessing, workers):
+        return self.model.fit_generator(generator,steps_per_epoch=steps_per_epoch, epochs=epochs,callbacks=callbacks, validation_data=val_gen, validation_steps=val_step_per_epochs, use_multiprocessing=use_multiprocessing, workers=workers)
     
     def saveMode(self, outputName):
         self.model.save_weights(outputName)
@@ -167,3 +167,17 @@ class meso_lstm(Classifier):
         # x2 = MaxPooling2D(pool_size=(2, 2), padding='same')(x2)
         # y = Flatten()(x2)
         # y = Reshape((6, 2))(x2)
+        
+        
+class meso_wavelet(Classifier):
+    def __init__(self, learning_rate = 0.001):
+        self.model = self.init_model()
+        optimizer = Adam(lr = learning_rate)
+        self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
+    
+    def init_model(self):
+        x = Input(shape = (128, 128, 12))
+        x2 = Conv2D(16, (5, 5), padding='same', activation = 'relu')(x)
+        # x2 = BatchNormalization()(x2)
+        # x2 = MaxPooling2D(pool_size=(2, 2), padding='same')(x2)
+        # y = Flatten()(x2)

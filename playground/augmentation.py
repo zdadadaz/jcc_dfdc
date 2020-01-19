@@ -53,22 +53,22 @@ def dft2( img):
     return out
 
 def blur_compress( img):
-    if random.random()<0.1:
-        image = blur(img)
-        return compress(image)
-    else:
-        return img
+    # if random.random()<0.1:
+    image = blur(img.astype("float"))
+    return compress(image)
+    # else:
+    #     return img
 
 def blur(img):
     sig = random.random()*3
-    return (cv2.GaussianBlur(img,(5,5),sig)) 
+    return cv2.GaussianBlur(img,(5,5),sig)
 
 def compress( img):
     q = random.random()*70 + 30
     encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), q]
     result, encimg = cv2.imencode('.jpg', img, encode_param)
     decimg = cv2.imdecode(encimg, 1)
-    return decimg
+    return decimg.astype("float")
 
 # 
 datagen = ImageDataGenerator(rescale=1./255,preprocessing_function = blur_compress)
@@ -81,7 +81,7 @@ for i in range(9):
  	# generate batch of images
  	batch = it.next()
  	# convert to unsigned integers for viewing
- 	image = ((batch[0].astype('float')+1 )*256 - 1).astype('uint8')
+ 	image = ((batch[0].astype('float') )*256 - 1).astype('uint8')
  	# image = batch[0].astype('uint8')
  	# plot raw pixel data
  	pyplot.imshow(image)

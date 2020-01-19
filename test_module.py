@@ -53,7 +53,7 @@ class Test():
         total_tests.reset_index(level=0, inplace=True,drop=True)
         return total_tests
     
-    def predict(self, classifier, datasets, save = False):
+    def predict(self, classifier, datasets, preprocess= False, save = False):
         submit = []
         save_interval = self.save_interval # perform face detection every {save_interval} frames
         total_num = len(datasets)
@@ -63,25 +63,34 @@ class Test():
             re_video = 0.5
             try:
                 # read video
-                reader = cv2.VideoCapture(os.path.join(self.dirname, vi))
-                images = []
-                for i in range(int(reader.get(cv2.CAP_PROP_FRAME_COUNT))):
-                    _, image = reader.read()
-                    if i % save_interval != 0:
-                        continue
-                    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                    images.append(image)
-                reader.release()
-                images = np.stack(images)
-                re_imgs = []
-                # detect face 
-                faces = self.face_detect(images)
+                cur_size = (1080,1920)
+                crop_size_iist = [(720, 1280), (1080,1920)]
+                for cr in range(2):
+                    crop_size = crop_size_iist[cr]
+                    reader = cv2.VideoCapture(os.path.join(self.dirname, vi))
+                    images = []
+                    for i in range(int(reader.get(cv2.CAP_PROP_FRAME_COUNT))):
+                        _, image = reader.read()
+                        if i % save_interval != 0:
+                            continue
+                        if cr == 0:
+                            image = image[0: int(crop_size[0]), int(cur_size[1]/2)-int(crop_size[1]/2): int(cur_size[1]/2)+int(crop_size[1]/2)]
+                        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                        images.append(image)
+                    reader.release()
+                    images = np.stack(images)
+                    re_imgs = []
+                    # detect face 
+                    faces = self.face_detect(images)
+                    if len(faces) == len(images) or cr == 1:
+                        break
                 if save:
                     for i in range(len(faces)):
-                        imageio.imwrite(join('./tmp_mtcnn',vi+"_"+str(i)+"_"+str(0)+".jpg"),faces[i],'jpg')
+                        imageio.imwrite(os.path.join('./tmp_mtcnn',vi+"_"+str(i)+"_"+str(0)+".jpg"),faces[i],'jpg')
+                if preprocess:
+                    faces = self.transform(faces)
                 re_imgs = classifier.predict(np.array(faces))
                 re_video = np.average(re_imgs)
-                # re_video = clip(re_video)
                 if np.isnan(re_video):
                     re_video = 0.5
                 print("score = "+str(re_video))
@@ -93,8 +102,8 @@ class Test():
         submit_score = [[i[1], 1-i[1]] for i in submit]
         final_score = log_loss(list(datasets['label']), submit_score)
         
-        submit_score_clip = [[clip(i[1]), 1-clip(i[1])] for i in submit]
-        final_score_clip = log_loss(list(total_tests['label']), submit_score_clip)
+        submit_score_clip = [[self.clip(i[1]), 1-self.clip(i[1])] for i in submit]
+        final_score_clip = log_loss(list(datasets['label']), submit_score_clip)
         
         submission = pd.DataFrame(submit, columns=['filename', 'label']).fillna(0.5)
         submission.sort_values('filename').to_csv('submission_'+ self.name +'.csv', index=False)
@@ -109,6 +118,29 @@ class Test():
     def face_detect(self, images):
         faces = []
         return faces
+    
+    def clip(self, value, shift = 0.1):
+        if value < shift:
+            return shift
+        if value >(1-shift):
+            return (1-shift)
+        return value
+    def transform(self, image):
+        pass
+    
+    def dft2(self, img):
+        out = np.zeros(img.shape)
+        def dft2_onechennel(image):
+            f = np.fft.fft2(image)
+            fshift = np.fft.fftshift(f)
+            a = np.log(np.abs(fshift)+1e-9)
+            a = a - a.mean()
+            a = (a+1e-9) / (a.max()+1e-9)
+            return a
+        for i in range(3):
+            out[:,:,i] = dft2_onechennel(img[:,:,i])
+        return out
+    
             
 class Test_mtcnn(Test):
     def __init__(self, arg):
@@ -159,27 +191,68 @@ class Test_base(Test):
                 faces.append(inp)
         return faces
 
-        
+
+class Test_base_fft(Test_base):
+    def __init__(self, arg):
+        super().__init__(arg)
+    
+    def transform(self, images):
+        faces = []
+        for im in images:
+            faces.append(self.dft2(im))
+        return faces
+    
+
+class Test_mtcnn_fft(Test_mtcnn):
+    def __init__(self, arg):
+        super().__init__(arg)
+    
+    def transform(self, images):
+        faces = []
+        for im in images:
+            faces.append(self.dft2(im))
+        return faces 
+
+    
+# =============================================================================
+# coefficient
+# =============================================================================
 arg = {}
+arg['name'] = "base_fft"
 arg['save_interval'] = 150
 arg['margin']=0.2
 arg['dirname'] = "./../fb_whole/dfdc_train_part_21"
 arg['dir_json'] = './../fb_whole/metadata_21.json'
-arg['name'] = "base"
-test_base = Test_base(arg)
+
 arg_m = {}
-arg_m['save_interval'] = 150
+arg_m['name'] = "mtcnn_fft"
+arg_m['save_interval'] = 75
 arg_m['margin']=0
 arg_m['dirname'] = "./../fb_whole/dfdc_train_part_21"
 arg_m['dir_json'] = './../fb_whole/metadata_21.json'
-arg_m['name'] = "mtcnn"
-test_mtcnn = Test_mtcnn(arg_m)
+
+# =============================================================================
+# declare module class
+# =============================================================================
+test_base = Test_base_fft(arg)
+test_mtcnn = Test_mtcnn_fft(arg_m)
+
+# classifier = MesoInception4()
+# classifier.load('weight_tmp/mesoInc4_aug-26-0.38.hdf5')
+# # classifier.load('result/meso4inc_base/v1.0.2/meso4inc-04-0.74.hdf5')
+
+
+# =============================================================================
+# Testing
+# =============================================================================
+# data = test_base.prepare_data()
+
+# test_mtcnn.predict(classifier, data)
+# test_base.predict(classifier, data)
 
 classifier = MesoInception4()
-classifier.load('weight_tmp/mesoInc4_fft-25-0.37.hdf5')
-# classifier.load('result/meso4inc_base/v1.0.2/meso4inc-04-0.74.hdf5')
-
+classifier.load('weight_tmp/mesoInc4_fft-26-0.57.hdf5')
 data = test_base.prepare_data()
 
-test_base.predict(classifier, data)
-test_mtcnn.predict(classifier, data)
+test_mtcnn.predict(classifier, data, preprocess=True)
+test_base.predict(classifier, data, preprocess=True)

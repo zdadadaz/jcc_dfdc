@@ -331,3 +331,25 @@ def compute_onevideo_accuracy(classifier, face_finder):
     gen = FaceBatchGenerator(face_finder)
     p = predict_faces(gen, classifier)
     return (np.mean(p > 0.5), p)
+
+import smtplib
+
+def send_email(message_in):
+    sender = 'zdadadaz@yahoo.com.tw'
+    receivers = ['zdadadaz5566@gmail.com']
+    
+    message = """From: From Person <zdadadaz@yahoo.com.tw>
+    To: To Person <zdadadaz5566@gmail.com>
+    Subject: SMTP e-mail test
+    
+    one training finish 
+    
+    This is a test e-mail message.
+    """
+    
+    try:
+       smtpObj = smtplib.SMTP('localhost')
+       smtpObj.sendmail(sender, receivers, message)         
+       print ("Successfully sent email")
+    except smtplib.SMTPException:
+       print ("Error: unable to send email")
