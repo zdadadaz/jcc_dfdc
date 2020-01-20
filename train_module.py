@@ -224,8 +224,22 @@ class Train_xception(Train):
 #train_lr.fit(tgen, vgen)
         
 #xception net
-name, classifier, batch_size, epochs = "xception_lr", MobileNet_mian(), 1, 1
-train = Train_xception(name, classifier, batch_size=batch_size,  epochs= epochs)
-tgen, vgen = train.prepare_input()
-train.fit(tgen, vgen)
+#name, classifier, batch_size, epochs = "xception_lr", MobileNet_mian(), 1, 1
+#train = Train_xception(name, classifier, batch_size=batch_size,  epochs= epochs)
+#tgen, vgen = train.prepare_input()
+#train.fit(tgen, vgen)
 
+name, classifier, batch_size, epochs = "xception_lr", Meso_lstm(), 1, 1
+#train = Train_xception(name, classifier, batch_size=batch_size,  epochs= epochs)
+#tgen, vgen = train.prepare_input()
+#train.fit(tgen, vgen)
+
+# check output of model
+model = classifier.init_model()
+#outputs = [layer.output for layer in model.layers[1:]]   
+#print(outputs)
+#input_shape = (32, 5, 256,256,3)
+#data = np.random.random(input_shape)
+## make and show prediction
+#out = model.predict(data)
+print(model.summary())

@@ -2,7 +2,10 @@
 import keras
 
 from keras.models import Model as KerasModel
+from keras.models import Sequential
+
 from keras.layers import Input, Dense, Flatten, Conv2D, MaxPooling2D, BatchNormalization, Dropout, Concatenate, LeakyReLU, GlobalMaxPooling2D, GlobalAveragePooling2D, Reshape
+from keras.layers import TimeDistributed, LSTM
 
 from keras.optimizers import Adam, SGD
 from models.SpatialPyramidPooling import SpatialPyramidPooling
@@ -148,7 +151,7 @@ class MesoInception4(Classifier):
             y = Dropout(0.5)(y)
             y = Dense(1, activation = 'sigmoid')(y)
         else:
-            y = GlobalMaxPooling2D()(x4)
+            y = Flatten()(x4)
         
         
         return KerasModel(inputs = x, outputs = y)
@@ -189,19 +192,34 @@ class Xception_main(Classifier):
 #https://towardsdatascience.com/get-started-with-using-cnn-lstm-for-forecasting-6f0f4dde5826
 #https://stackoverflow.com/questions/53488768/keras-functional-api-combine-cnn-model-with-a-rnn-to-to-look-at-sequences-of-im
 #https://stackoverflow.com/questions/53488359/cnn-lstm-image-classification
-class meso_lstm(Classifier):
+
+class Meso_lstm(Classifier):
     def __init__(self, learning_rate = 0.001):
         self.model = self.init_model()
         optimizer = Adam(lr = learning_rate)
         self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
     
     def init_model(self):
-        x = Input(shape = (IMGWIDTH, IMGWIDTH, 3))
-        x2 = Conv2D(16, (5, 5), padding='same', activation = 'relu')(x)
-        # x2 = BatchNormalization()(x2)
-        # x2 = MaxPooling2D(pool_size=(2, 2), padding='same')(x2)
-        # y = Flatten()(x2)
-        # y = Reshape((6, 2))(x2)
+        
+#        input_shape = (32, 5, 256,256,3), (batch, sequence, img_h, img_w, img_dimension)
+#        out_timesDistributed_meso = (32, 5, 1024)
+#        input_shape_lstm, as the same as above 
+#        out_LSTM = (), 
+#        return_sequences=True (32,5,32)
+#        return_sequences=False (32,32), only the number in last times stamp left
+        
+        base_model_class = MesoInception4()
+        base_model = base_model_class.init_model(include_top=False)
+        for layer in base_model.layers:
+            layer.trainable=False
+        
+#        return_sequences = False means
+#       False in Keras RNN layers, and this means the RNN layer will only return the last hidden state output
+        x = Input(shape = (5, IMGWIDTH, IMGWIDTH, 3))
+        x1 = TimeDistributed(base_model)(x)
+        x2 = LSTM(32, return_sequences=False)(x1)
+        y = Dense(1, activation='sigmoid',use_bias=True)(x2)
+        return KerasModel(inputs=x,outputs=y)
         
         
 class meso_wavelet(Classifier):
@@ -232,7 +250,6 @@ class MobileNet_mian(Classifier):
         
         
     def init_model(self, include_top = True):
-#       input_shape=(224,224,3), input_tensor=None,
         base_model = MobileNet(input_shape=(224,224,3), alpha=1.0, include_top=False, weights='imagenet',  pooling=False, classes=1)
         x = base_model.output
         x = GlobalAveragePooling2D()(x)
