@@ -1,10 +1,14 @@
 # -*- coding:utf-8 -*-
+import keras
 
 from keras.models import Model as KerasModel
 from keras.layers import Input, Dense, Flatten, Conv2D, MaxPooling2D, BatchNormalization, Dropout, Concatenate, LeakyReLU, GlobalMaxPooling2D, Reshape
 
 from keras.optimizers import Adam, SGD
 from models.SpatialPyramidPooling import SpatialPyramidPooling
+
+from keras.applications import MobileNet, Xception
+from keras.applications.mobilenet import preprocess_input
 
 IMGWIDTH = 256
 
@@ -89,6 +93,7 @@ class Meso4(Classifier):
 
 
 class MesoInception4(Classifier):
+    #MesoNet uses a batch-size of 76. The learning-rate is initially set to 10^-3 and is consecutively reduced by a factor of ten for each epoch to 10^−6
     def __init__(self, learning_rate = 0.001, include_top = True):
         self.model = self.init_model(include_top)
         optimizer = Adam(lr = learning_rate)
@@ -148,11 +153,30 @@ class MesoInception4(Classifier):
         
         return KerasModel(inputs = x, outputs = y)
 
-class Xception(Classifier):
-    def __init__(self, learning_rate = 0.001):
+class Xception_main(Classifier):
+#    Reference
+#    https://www.groundai.com/project/faceforensics-learning-to-detect-manipulated-facial-images/1
+#    https://medium.com/@gkadusumilli/image-recognition-using-pre-trained-xception-model-in-5-steps-96ac858f4206
+#     learning-rate of 0.0002 and a batch-size of 32
+    def __init__(self, learning_rate = 0.0002):
         self.model = self.init_model()
         optimizer = Adam(lr = learning_rate)
         self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
+        
+        #        set trainable layer
+        for layer in self.model.layers[:20]:
+            layer.trainable=False
+        for layer in self.model.layers[20:]:
+            layer.trainable=True
+#        print(self.model.summary())
+        
+    def init_model(self, include_top = True):
+        img_width, img_height = 224, 224
+        base_model = Xception(input_shape=(img_width, img_height, 3), weights='imagenet', include_top='max')
+        # Top Model Block
+        x = base_model.output
+        y = layers.Dense(1, activation='sigmoid',use_bias=True, name='Logits')(x)
+        return KerasModel(inputs=base_model.input,outputs=y)
 
 class meso_lstm(Classifier):
     def __init__(self, learning_rate = 0.001):
@@ -181,3 +205,33 @@ class meso_wavelet(Classifier):
         # x2 = BatchNormalization()(x2)
         # x2 = MaxPooling2D(pool_size=(2, 2), padding='same')(x2)
         # y = Flatten()(x2)
+
+class MobileNet_mian(Classifier):
+    def __init__(self, learning_rate = 0.001):    
+        self.model = self.init_model()
+        optimizer = Adam(lr = learning_rate)
+        self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
+        
+#        set trainable layer
+        for layer in self.model.layers[:20]:
+            layer.trainable=False
+        for layer in self.model.layers[20:]:
+            layer.trainable=True
+        
+    def init_model(self, include_top = True):
+#       input_shape=(224,224,3), input_tensor=None,
+#        base_model = MobileNet( alpha=1.0, include_top=False, weights='imagenet',  pooling='max', classes=1)
+        base_model = MobileNet(weights='imagenet',require_flatten=False)
+#        mobilenet last layer
+        y = layers.Dense(1, activation='sigmoid',use_bias=True, name='Logits')(base_model)
+        
+#        meso4 last few layers
+#        y = Flatten()(base_model)
+#        y = Dropout(0.5)(y)
+#        y = Dense(16)(y)
+#        y = LeakyReLU(alpha=0.1)(y)
+#        y = Dropout(0.5)(y)
+#        y = Dense(1, activation = 'sigmoid')(y)
+        
+        return KerasModel(inputs=base_model.input,outputs=y)
+

@@ -21,6 +21,9 @@ import random
 import numpy as np
 import multiprocessing
 
+from keras.callbacks import LearningRateScheduler
+from playground.learning_rate import StepDecay,LearningRateDecay
+
 class Train():
     def __init__(self, name, classifier, batch_size=50, epochs = 20):
         self.name = name
@@ -142,15 +145,58 @@ class Train_blur_compress(Train):
         result, encimg = cv2.imencode('.jpg', img, encode_param)
         decimg = cv2.imdecode(encimg, 1)
         return decimg.astype("float")
-                        
+
+class Train_lrdecay(Train):
+    def __init__(self, name, classifier, batch_size=50, epochs = 20):
+        super().__init__(name, classifier, batch_size=batch_size, epochs = epochs)
+        self.schedule = None
+    def callback_train(self):
+        # checkpoint
+        filepath="./weight_tmp/"+self.name +"-{epoch:02d}-{val_loss:.2f}.hdf5"
+        checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
+        es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=10)
+        self.schedule = StepDecay()
+        callbacks_list = [checkpoint, LearningRateScheduler(self.schedule)]
+        return callbacks_list
     
-name, classifier_fft, batch_size, epochs = "mesoInc4_fft", MesoInception4(), 50, 40
-train_fft = Train_fft(name, classifier_fft, batch_size,  epochs= epochs)
-tgen, vgen = train_fft.prepare_input()
-train_fft.fit(tgen, vgen)
+    def prepare_input(self):    
+        dataGenerator, val_dataGenerator = self.augmentation()
+        generator = dataGenerator.flow_from_directory(
+                # 'deepfake_database/train_test',
+                'db_playground/',
+                target_size=(256, 256),
+                batch_size=self.batch_size,
+                class_mode='binary',
+                subset='training')
+        val_generator = val_dataGenerator.flow_from_directory(
+                # 'deepfake_database/validation',
+                'db_playground/',
+                target_size=(256, 256),
+                batch_size=self.batch_size,
+                class_mode='binary')
+        return generator, val_generator
+    
 
+    
+#name, classifier_fft, batch_size, epochs = "mesoInc4_fft", MesoInception4(), 50, 40
+#train_fft = Train_fft(name, classifier_fft, batch_size,  epochs= epochs)
+#tgen, vgen = train_fft.prepare_input()
+#train_fft.fit(tgen, vgen)
+#
+#
+#name, classifier_aug, batch_size, epochs = "mesoInc4_aug", MesoInception4(), 50, 40
+#train_bc = Train_blur_compress(name, classifier_aug, batch_size, epochs= epochs)
+#tgen, vgen = train_bc.prepare_input()
+#train_bc.fit(tgen, vgen)
 
-name, classifier_aug, batch_size, epochs = "mesoInc4_aug", MesoInception4(), 50, 40
-train_bc = Train_blur_compress(name, classifier_aug, batch_size, epochs= epochs)
-tgen, vgen = train_bc.prepare_input()
-train_bc.fit(tgen, vgen)
+#Mobilenet_v2
+#name, classifier_mb, batch_size, epochs = "mobileNet", MobileNet(), 32, 1
+#train_mvnet = Train_mbnet(name, classifier_mb, batch_size=batch_size,  epochs= epochs)
+#tgen, vgen = train_mvnet.prepare_input()
+#train_mvnet.fit(tgen, vgen)
+        
+#learning rate decay
+name, classifier, batch_size, epochs = "meso_lr", MesoInception4(), 1, 5
+train_lr = Train_lrdecay(name, classifier, batch_size=batch_size,  epochs= epochs)
+tgen, vgen = train_lr.prepare_input()
+train_lr.fit(tgen, vgen)
