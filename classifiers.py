@@ -2,7 +2,7 @@
 import keras
 
 from keras.models import Model as KerasModel
-from keras.layers import Input, Dense, Flatten, Conv2D, MaxPooling2D, BatchNormalization, Dropout, Concatenate, LeakyReLU, GlobalMaxPooling2D, Reshape
+from keras.layers import Input, Dense, Flatten, Conv2D, MaxPooling2D, BatchNormalization, Dropout, Concatenate, LeakyReLU, GlobalMaxPooling2D, GlobalAveragePooling2D, Reshape
 
 from keras.optimizers import Adam, SGD
 from models.SpatialPyramidPooling import SpatialPyramidPooling
@@ -160,24 +160,35 @@ class Xception_main(Classifier):
 #     learning-rate of 0.0002 and a batch-size of 32
     def __init__(self, learning_rate = 0.0002):
         self.model = self.init_model()
+        self.based_model_last_block_layer_number = 126
         optimizer = Adam(lr = learning_rate)
+        #        set trainable layer
+        for layer in self.model.layers[:self.based_model_last_block_layer_number]:
+            layer.trainable = False
+        for layer in self.model.layers[self.based_model_last_block_layer_number:]:
+            layer.trainable = True
+#        print(self.model.summary())
+        
         self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
         
-        #        set trainable layer
-        for layer in self.model.layers[:20]:
-            layer.trainable=False
-        for layer in self.model.layers[20:]:
-            layer.trainable=True
-#        print(self.model.summary())
         
     def init_model(self, include_top = True):
         img_width, img_height = 224, 224
-        base_model = Xception(input_shape=(img_width, img_height, 3), weights='imagenet', include_top='max')
+        base_model = Xception(input_shape=(img_width, img_height, 3), weights='imagenet', include_top=False)
+        
+#        for layer in base_model.layers:
+#            layer.trainable = False
+        
         # Top Model Block
         x = base_model.output
-        y = layers.Dense(1, activation='sigmoid',use_bias=True, name='Logits')(x)
+        x = GlobalAveragePooling2D()(x)
+        y = Dense(1, activation='sigmoid',use_bias=True)(x)
         return KerasModel(inputs=base_model.input,outputs=y)
 
+# Reference:
+#https://towardsdatascience.com/get-started-with-using-cnn-lstm-for-forecasting-6f0f4dde5826
+#https://stackoverflow.com/questions/53488768/keras-functional-api-combine-cnn-model-with-a-rnn-to-to-look-at-sequences-of-im
+#https://stackoverflow.com/questions/53488359/cnn-lstm-image-classification
 class meso_lstm(Classifier):
     def __init__(self, learning_rate = 0.001):
         self.model = self.init_model()
@@ -210,28 +221,22 @@ class MobileNet_mian(Classifier):
     def __init__(self, learning_rate = 0.001):    
         self.model = self.init_model()
         optimizer = Adam(lr = learning_rate)
+
+#        set trainable layer
+        for layer in self.model.layers[:-2]:
+            layer.trainable=False
+        for layer in self.model.layers[-2:]:
+            layer.trainable=True
+            
         self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
         
-#        set trainable layer
-        for layer in self.model.layers[:20]:
-            layer.trainable=False
-        for layer in self.model.layers[20:]:
-            layer.trainable=True
         
     def init_model(self, include_top = True):
 #       input_shape=(224,224,3), input_tensor=None,
-#        base_model = MobileNet( alpha=1.0, include_top=False, weights='imagenet',  pooling='max', classes=1)
-        base_model = MobileNet(weights='imagenet',require_flatten=False)
-#        mobilenet last layer
-        y = layers.Dense(1, activation='sigmoid',use_bias=True, name='Logits')(base_model)
-        
-#        meso4 last few layers
-#        y = Flatten()(base_model)
-#        y = Dropout(0.5)(y)
-#        y = Dense(16)(y)
-#        y = LeakyReLU(alpha=0.1)(y)
-#        y = Dropout(0.5)(y)
-#        y = Dense(1, activation = 'sigmoid')(y)
+        base_model = MobileNet(input_shape=(224,224,3), alpha=1.0, include_top=False, weights='imagenet',  pooling=False, classes=1)
+        x = base_model.output
+        x = GlobalAveragePooling2D()(x)
+        y = Dense(1, activation='sigmoid',use_bias=True)(x)
         
         return KerasModel(inputs=base_model.input,outputs=y)
 

@@ -175,7 +175,29 @@ class Train_lrdecay(Train):
                 batch_size=self.batch_size,
                 class_mode='binary')
         return generator, val_generator
+
+class Train_xception(Train):
+    def __init__(self, name, classifier, batch_size=50, epochs = 20):
+        super().__init__(name, classifier, batch_size=batch_size, epochs = epochs)
+
+    def prepare_input(self):    
+        dataGenerator, val_dataGenerator = self.augmentation()
+        generator = dataGenerator.flow_from_directory(
+                # 'deepfake_database/train_test',
+                'db_playground/',
+                target_size=(224, 224),
+                batch_size=self.batch_size,
+                class_mode='binary',
+                subset='training')
+        val_generator = val_dataGenerator.flow_from_directory(
+                # 'deepfake_database/validation',
+                'db_playground/',
+                target_size=(224, 224),
+                batch_size=self.batch_size,
+                class_mode='binary')
+        return generator, val_generator
     
+
 
     
 #name, classifier_fft, batch_size, epochs = "mesoInc4_fft", MesoInception4(), 50, 40
@@ -196,7 +218,14 @@ class Train_lrdecay(Train):
 #train_mvnet.fit(tgen, vgen)
         
 #learning rate decay
-name, classifier, batch_size, epochs = "meso_lr", MesoInception4(), 1, 5
-train_lr = Train_lrdecay(name, classifier, batch_size=batch_size,  epochs= epochs)
-tgen, vgen = train_lr.prepare_input()
-train_lr.fit(tgen, vgen)
+#name, classifier, batch_size, epochs = "meso_lr", MesoInception4(), 1, 5
+#train_lr = Train_lrdecay(name, classifier, batch_size=batch_size,  epochs= epochs)
+#tgen, vgen = train_lr.prepare_input()
+#train_lr.fit(tgen, vgen)
+        
+#xception net
+name, classifier, batch_size, epochs = "xception_lr", MobileNet_mian(), 1, 1
+train = Train_xception(name, classifier, batch_size=batch_size,  epochs= epochs)
+tgen, vgen = train.prepare_input()
+train.fit(tgen, vgen)
+
