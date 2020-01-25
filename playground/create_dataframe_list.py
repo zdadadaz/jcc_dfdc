@@ -37,6 +37,7 @@ def sample_data_by_folder(dfdc_foldername, split, df, seed):
     assign_split_by_index(df, real_re, split)
     assign_split_by_index(df, fake_re, split)
 
+# maybe can be random
 def create_folder_list(start, end):
     train_folder_list = []
     for i in range(start, end, 1):
@@ -80,11 +81,15 @@ def create_training_file(train_df):
         label = train_df.iloc[i,1]
         fn = train_df.iloc[i,5]
         step = fn//5
+        count = 0
         for s in range(0,fn,step):
+            count += 1
             file = vid + "_"+ str(s)+".jpg"
             tmp_str = os.path.join(folder,label,file)
             filenmes.append(tmp_str)
             labels.append(label)
+        if count != 5:
+            print("error, frame number is less than 5")
     dict_assign = {'filenme': filenmes, 'label': labels}
     df = pd.DataFrame(dict_assign, columns = ['filename', 'label'])
     return df
@@ -125,7 +130,7 @@ loop_for_sample_data(train_folder_list, "train", df)
 train_df = df[df['split']=='train']
 print("create output file for training")
 out_train_df = create_training_file(train_df)
-out_train_df.sort_values('filenme').to_csv('training_dataset.csv', index=False)
+#out_train_df.sort_values('filenme').to_csv('training_dataset.csv', index=False)
 
 
 
