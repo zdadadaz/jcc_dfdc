@@ -61,22 +61,28 @@ class Extract_image():
                 self.capture_image(vid,out_filename)
     
     def capture_image(self, vid, out_filename):
-        reader = cv2.VideoCapture(os.path.join(self.dir_lists, vid))
+        # reader = cv2.VideoCapture(os.path.join(self.dir_lists, vid))
         # read video
         cur_size = (1080,1920)
+        crop_size_iist = [(1080, 1920), (1080,1920)]
         crop_size_iist = [(720, 1280), (1080,1920)]
         for cr in range(2):
             crop_size = crop_size_iist[cr]
             reader = cv2.VideoCapture(os.path.join(self.dir_lists, vid))
             images = []
+            # print(int(reader.get(cv2.CAP_PROP_FRAME_COUNT)))
             if int(reader.get(cv2.CAP_PROP_FRAME_COUNT)) % self.save_interval <= 2:
-                save_interval = self.save_interval-1 # perform face detection every {save_interval} frames
+                save_interval = self.save_interval-30 # perform face detection every {save_interval} frames
             else:
                 save_interval = self.save_interval
+            count_image = 0
             for i in range(int(reader.get(cv2.CAP_PROP_FRAME_COUNT))):
                 _, image = reader.read()
                 if i % save_interval != 0 and i % save_interval != 1 and i % save_interval != 2:
                     continue
+                if count_image > 18:
+                    break
+                count_image += 1
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 if cr == 0:
                     image = image[(int(cur_size[1]/2)-int(crop_size[1]/2)): (int(cur_size[1]/2)+int(crop_size[1]/2)),0: int(crop_size[0]), :]
@@ -90,9 +96,7 @@ class Extract_image():
                     output_name= vid + "_" + str(i) +  ".jpg"
                     imageio.imwrite(join(out_filename,output_name),faces[i],'jpg')
                 break
-        # except:
-            #     print("no image")
-
+        
         
     def face_detect(self, images):
         faces = []
@@ -133,7 +137,7 @@ class Extract_image():
         return faces
 
 
-folderNames = ["dfdc_train_part_24"]
+folderNames = [  "dfdc_train_part_15", "dfdc_train_part_16", "dfdc_train_part_17", "dfdc_train_part_18", "dfdc_train_part_19", "dfdc_train_part_20"]
 for folderName in folderNames:
     # folderName="dfdc_train_part_21"
     

@@ -63,6 +63,7 @@ def check_frame_number(folder, df):
     for sf in split_folders:
         if sf[0] == ".":
             continue
+        print("folder name: " +sf)
         for df_real in os.listdir(os.path.join(folder, sf)):
             if df_real[0] == ".":
                 continue
@@ -94,7 +95,7 @@ def create_training_file(train_df):
     df = pd.DataFrame(dict_assign, columns = ['filename', 'label'])
     return df
 
-folder = "./../db_multi_playground"
+folder = "./../fb_db"
 df_file= "./../metadata_small.csv"
 
 train_folder_number = 35
@@ -120,17 +121,29 @@ valid_folder_list = create_folder_list(train_folder_number, train_folder_number 
 test_folder_list = create_folder_list(train_folder_number + valid_folder_number, train_folder_number + valid_folder_number+test_folder_number)
 print("sample for training")
 loop_for_sample_data(train_folder_list, "train", df)
-#print("sample for validation")
-#loop_for_sample_data(valid_folder_list, "valid", df)
-#print("sample for testing")
-#loop_for_sample_data(test_folder_list, "test", df)
+print("sample for validation")
+loop_for_sample_data(valid_folder_list, "valid", df)
+print("sample for testing")
+loop_for_sample_data(test_folder_list, "test", df)
 
-#df.sort_values('filename').to_csv('training_dataset.csv', index=False)
+df.sort_values('filename').to_csv('training_dataset.csv', index=False)
 
+
+# Create list of files for training
 train_df = df[df['split']=='train']
 print("create output file for training")
 out_train_df = create_training_file(train_df)
-#out_train_df.sort_values('filenme').to_csv('training_dataset.csv', index=False)
+out_train_df.sort_values('filenme').to_csv('training_dataset.csv', index=False)
+
+valid_df = df[df['split']=='valid']
+print("create output file for validation")
+out_valid_df = create_training_file(valid_df)
+out_valid_df.sort_values('filenme').to_csv('valid_dataset.csv', index=False)
+
+test_df = df[df['split']=='test']
+print("create output file for testing")
+out_test_df = create_training_file(test_df)
+out_test_df.sort_values('filenme').to_csv('test_dataset.csv', index=False)
 
 
 
