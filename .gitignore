@@ -120,3 +120,4 @@ structure/*
 result/*
 metadata*
 df_result/*
+playground/*.csv

@@ -36,6 +36,10 @@ class Classifier:
     
     def saveMode(self, outputName):
         self.model.save_weights(outputName)
+    
+    def eval_generator(self, validation_generator, steps_per_epoch):
+        scoreSeg,loss = self.model.evaluate_generator(validation_generator, steps=steps_per_epoch)
+        return scoreSeg, loss
 
 class Meso1(Classifier):
     """
@@ -161,32 +165,69 @@ class Xception_main(Classifier):
 #    https://www.groundai.com/project/faceforensics-learning-to-detect-manipulated-facial-images/1
 #    https://medium.com/@gkadusumilli/image-recognition-using-pre-trained-xception-model-in-5-steps-96ac858f4206
 #     learning-rate of 0.0002 and a batch-size of 32
-    def __init__(self, learning_rate = 0.0002):
+    def __init__(self, learning_rate = 0.0001):
         self.model = self.init_model()
-        self.based_model_last_block_layer_number = 126
+        self.based_model_last_block_layer_number = 132
         optimizer = Adam(lr = learning_rate)
+        # optimizer = SGD(lr = 0.001)
+        #        set trainable layer
+        for layer in self.model.layers[:self.based_model_last_block_layer_number]:
+            layer.trainable = True
+        for layer in self.model.layers[self.based_model_last_block_layer_number:]:
+            layer.trainable = True
+        print(self.model.summary())
+        
+        self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
+        
+    
+    
+    def init_model(self, include_top = True):
+        img_width, img_height = 299, 299
+        base_model = Xception(input_shape=(img_width, img_height, 3), weights='imagenet', include_top=False)
+        
+        # Top Model Block
+        x = base_model.output
+        x = GlobalAveragePooling2D()(x)
+        y = Dense(1, activation='sigmoid', name='predictions')(x)
+    
+        return KerasModel(inputs=base_model.input,outputs=y)
+
+class Xception_main_drop(Classifier):
+#    Reference
+#    https://www.groundai.com/project/faceforensics-learning-to-detect-manipulated-facial-images/1
+#    https://medium.com/@gkadusumilli/image-recognition-using-pre-trained-xception-model-in-5-steps-96ac858f4206
+#     learning-rate of 0.0002 and a batch-size of 32
+    def __init__(self, learning_rate = 0.0001):
+        self.model = self.init_model()
+        self.based_model_last_block_layer_number = 132
+        optimizer = Adam(lr = learning_rate)
+        # optimizer = SGD(lr = 0.001)
         #        set trainable layer
         for layer in self.model.layers[:self.based_model_last_block_layer_number]:
             layer.trainable = False
         for layer in self.model.layers[self.based_model_last_block_layer_number:]:
             layer.trainable = True
-#        print(self.model.summary())
+        print(self.model.summary())
         
         self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
         
-        
     def init_model(self, include_top = True):
-        img_width, img_height = 224, 224
+        img_width, img_height = 299, 299
         base_model = Xception(input_shape=(img_width, img_height, 3), weights='imagenet', include_top=False)
-        
-#        for layer in base_model.layers:
-#            layer.trainable = False
         
         # Top Model Block
         x = base_model.output
         x = GlobalAveragePooling2D()(x)
-        y = Dense(1, activation='sigmoid',use_bias=True)(x)
+        # y = Dense(1, activation='sigmoid', name='predictions')(x)
+        
+        y = Dropout(0.5)(x)
+        y = Dense(16)(y)
+        y = LeakyReLU(alpha=0.1)(y)
+        y = Dropout(0.5)(y)
+        y = Dense(1, activation = 'sigmoid')(y)
+        
         return KerasModel(inputs=base_model.input,outputs=y)
+
 
 # Reference:
 #https://towardsdatascience.com/get-started-with-using-cnn-lstm-for-forecasting-6f0f4dde5826

@@ -24,6 +24,16 @@ import multiprocessing
 from keras.callbacks import LearningRateScheduler
 from playground.learning_rate import StepDecay,LearningRateDecay
 
+import pandas as pd
+
+import tensorflow as tf
+from keras.backend.tensorflow_backend import set_session
+
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+session = tf.Session(config=config)
+set_session(session)
+
 class Train():
     def __init__(self, name, classifier, batch_size=50, epochs = 20):
         self.name = name
@@ -34,15 +44,15 @@ class Train():
         
     
     def augmentation(self):
-        dataGenerator = ImageDataGenerator(rescale=1./255)
+        dataGenerator = ImageDataGenerator(rescale=1./255,\
+                                           horizontal_flip=True)
                                    # preprocessing_function = dft2 )
-                                    # horizontal_flip=True,
+                                    
                                     # # width_shift_range=50,
                                     # # height_shift_range=50,
                                     # zoom_range =0.2,
                                     # preprocessing_function = blur)
         val_dataGenerator = ImageDataGenerator(rescale=1./255)
-                                               # preprocessing_function = dft2)
         return dataGenerator, val_dataGenerator
     
     def prepare_input(self):    
@@ -67,7 +77,7 @@ class Train():
         filepath="./weight_tmp/"+self.name +"-{epoch:02d}-{val_loss:.2f}.hdf5"
         checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
         es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=10)
-        callbacks_list = [checkpoint]
+        callbacks_list = [checkpoint, es]
         return callbacks_list
     
     def fit(self, tgen, vgen):
@@ -156,45 +166,42 @@ class Train_lrdecay(Train):
         checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
         es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=10)
         self.schedule = StepDecay()
-        callbacks_list = [checkpoint, LearningRateScheduler(self.schedule)]
+        callbacks_list = [checkpoint, LearningRateScheduler(self.schedule), es]
         return callbacks_list
     
-    def prepare_input(self):    
-        dataGenerator, val_dataGenerator = self.augmentation()
-        generator = dataGenerator.flow_from_directory(
-                # 'deepfake_database/train_test',
-                'db_playground/',
-                target_size=(256, 256),
-                batch_size=self.batch_size,
-                class_mode='binary',
-                subset='training')
-        val_generator = val_dataGenerator.flow_from_directory(
-                # 'deepfake_database/validation',
-                'db_playground/',
-                target_size=(256, 256),
-                batch_size=self.batch_size,
-                class_mode='binary')
-        return generator, val_generator
-
 class Train_xception(Train):
-    def __init__(self, name, classifier, batch_size=50, epochs = 20):
+    def __init__(self, name, classifier, train_path, valid_path, batch_size=50, epochs = 20):
         super().__init__(name, classifier, batch_size=batch_size, epochs = epochs)
+        self.df_train = pd.read_csv(train_path)
+        self.df_valid = pd.read_csv(valid_path)
 
     def prepare_input(self):    
         dataGenerator, val_dataGenerator = self.augmentation()
-        generator = dataGenerator.flow_from_directory(
-                # 'deepfake_database/train_test',
-                'db_playground/',
-                target_size=(224, 224),
-                batch_size=self.batch_size,
-                class_mode='binary',
-                subset='training')
-        val_generator = val_dataGenerator.flow_from_directory(
-                # 'deepfake_database/validation',
-                'db_playground/',
-                target_size=(224, 224),
-                batch_size=self.batch_size,
-                class_mode='binary')
+        
+        generator = dataGenerator.flow_from_dataframe(dataframe=self.df_train, \
+                                            directory="./../dataset/fb_db", \
+                                            x_col="filename", y_col="label", \
+                                            class_mode="binary", \
+                                            target_size=(299,299), \
+                                            batch_size=self.batch_size,
+                                            subset='training')
+        val_generator = val_dataGenerator.flow_from_dataframe(dataframe=self.df_valid, \
+                                            directory="./../dataset/fb_db", \
+                                            x_col="filename", y_col="label", \
+                                            class_mode="binary", \
+                                            target_size=(299,299), \
+                                            batch_size=self.batch_size)
+        # generator = dataGenerator.flow_from_directory(
+        #         './../dataset/db_small/train',
+        #         target_size=(299, 299),
+        #         batch_size=self.batch_size,
+        #         class_mode='binary',
+        #         subset='training')
+        # val_generator = val_dataGenerator.flow_from_directory(
+        #         './../dataset/db_small/val',
+        #         target_size=(299, 299),
+        #         batch_size=self.batch_size,
+        #         class_mode='binary')
         return generator, val_generator
     
 
@@ -224,22 +231,38 @@ class Train_xception(Train):
 #train_lr.fit(tgen, vgen)
         
 #xception net
-#name, classifier, batch_size, epochs = "xception_lr", MobileNet_mian(), 1, 1
-#train = Train_xception(name, classifier, batch_size=batch_size,  epochs= epochs)
-#tgen, vgen = train.prepare_input()
-#train.fit(tgen, vgen)
+name, classifier, batch_size, epochs = "xception", Xception_main(), 10, 40
+train_path = "./playground/training_dataset_5.csv"
+valid_path = "./playground/valid_dataset_5.csv"
+# classifier.load("weight_tmp/xception-01-0.76_fc.hdf5")
+classifier.load("result/xception/x1.0.0/xception-08-0.66.hdf5")
+train = Train_xception(name, classifier,train_path,valid_path, batch_size=batch_size,  epochs= epochs)
+tgen, vgen = train.prepare_input()
+train.fit(tgen, vgen)
 
-name, classifier, batch_size, epochs = "xception_lr", Meso_lstm(), 1, 1
-#train = Train_xception(name, classifier, batch_size=batch_size,  epochs= epochs)
-#tgen, vgen = train.prepare_input()
-#train.fit(tgen, vgen)
+
+# name, classifier, batch_size, epochs = "xception_drop", Xception_main_drop(), 22, 40
+# train_path = "./playground/training_dataset_2.csv"
+# valid_path = "./playground/valid_dataset_2.csv"
+# # classifier.load("weight_tmp/xception-01-0.76_fc.hdf5")
+# train = Train_xception(name, classifier,train_path,valid_path, batch_size=batch_size,  epochs= epochs)
+# tgen, vgen = train.prepare_input()
+# train.fit(tgen, vgen)
+
+
+
+#  meso lstm
+# name, classifier, batch_size, epochs = "xception", Meso_lstm(), 32, 20
+# train = Train_xception(name, classifier, batch_size=batch_size,  epochs= epochs)
+# tgen, vgen = train.prepare_input()
+# train.fit(tgen, vgen)
 
 # check output of model
-model = classifier.init_model()
-#outputs = [layer.output for layer in model.layers[1:]]   
-#print(outputs)
+# model = classifier.init_model()
+# outputs = [layer.output for layer in model.layers[1:]]   
+# print(outputs)
 #input_shape = (32, 5, 256,256,3)
 #data = np.random.random(input_shape)
 ## make and show prediction
 #out = model.predict(data)
-print(model.summary())
+# print(model.summary())

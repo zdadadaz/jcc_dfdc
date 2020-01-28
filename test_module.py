@@ -169,7 +169,8 @@ class Test_mtcnn(Test):
             face = image[y0:y1,x0:x1]
             if sum(np.array(face.shape)==0) == 1:
                 continue
-            face = cv2.resize(face,(256,256))/255.
+            face = cv2.resize(face,(299,299))/255.
+            # face = cv2.resize(face,(256,256))/255.
             faces.append(face)
         return faces
 
@@ -234,7 +235,7 @@ arg_m['dir_json'] = './../fb_whole/metadata_21.json'
 # =============================================================================
 # declare module class
 # =============================================================================
-test_base = Test_base_fft(arg)
+# test_base = Test_base_fft(arg)
 test_mtcnn = Test_mtcnn_fft(arg_m)
 
 # classifier = MesoInception4()
@@ -245,14 +246,9 @@ test_mtcnn = Test_mtcnn_fft(arg_m)
 # =============================================================================
 # Testing
 # =============================================================================
-# data = test_base.prepare_data()
+classifier = Xception_main()
+classifier.load('weight_tmp/xception-02-0.39.hdf5')
+data = test_mtcnn.prepare_data()
 
-# test_mtcnn.predict(classifier, data)
-# test_base.predict(classifier, data)
-
-classifier = MesoInception4()
-classifier.load('weight_tmp/mesoInc4_fft-26-0.57.hdf5')
-data = test_base.prepare_data()
-
-test_mtcnn.predict(classifier, data, preprocess=True)
-test_base.predict(classifier, data, preprocess=True)
+test_mtcnn.predict(classifier, data, preprocess=False)
+# test_base.predict(classifier, data, preprocess=True)
