@@ -173,6 +173,50 @@ class Test_mtcnn(Test):
             # face = cv2.resize(face,(256,256))/255.
             faces.append(face)
         return faces
+    
+    def face_detect_fast(self, images):
+        faces = []
+        cur_center=None
+        crop_size_iist = [(500, 500), (1080,1920)]
+        crop_size = crop_size_iist[0]
+        for image in images:
+            if len(faces) != 0:
+                y0 = max(0,(cur_center[1]-int(crop_size[1]/2)))
+                y1 = min(1920, (cur_center[1]+int(crop_size[1]/2)))
+                x0 = max(0, (cur_center[0]-int(crop_size[0]/2)))
+                x1 = min(1080, (cur_center[0]+int(crop_size[0]/2)))
+                image = image[y0:y1, x0:x1, :]
+            boxes = self.detector.detect_faces(image)
+            if len(boxes) == 0:
+                continue
+            box = boxes[0]['box']
+            face_position = [0]*4
+            maxframe = max(int(box[3]/2),int(box[2]/2))
+            center_y = box[1]+int(box[3]/2)
+            center_x = box[0]+int(box[2]/2)
+            face_position[0] = center_y-maxframe
+            face_position[2] = center_y+maxframe
+            face_position[3] = center_x-maxframe
+            face_position[1] = center_x+maxframe
+            offset = round(self.margin * (face_position[2] - face_position[0]))
+            y0 = max(face_position[0] - offset, 0)
+            x1 = min(face_position[1] + offset, image.shape[1])
+            y1 = min(face_position[2] + offset, image.shape[0])
+            x0 = max(face_position[3] - offset, 0)
+            face = image[y0:y1,x0:x1]
+            if sum(np.array(face.shape)==0) == 1:
+                continue
+            if len(faces) == 1:
+                cur_center= [center_x, center_y]
+            else:
+                diff_x = int(crop_size[0]/2) - center_x
+                diff_y = int(crop_size[1]/2) - center_y
+                cur_center = [cur_center[0]+diff_x,cur_center[1]+diff_y]
+                
+                cur_center = [cur_center[0]+center_x,center_y]
+            face = cv2.resize(face,(256,256))/255.
+            faces.append(face)
+        return faces
 
 class Test_base(Test):
     def __init__(self, arg):
