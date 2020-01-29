@@ -24,6 +24,12 @@ from tensorflow.keras.utils import Sequence
 #Reference
 #https://towardsdatascience.com/keras-data-generators-and-how-to-use-them-b69129ed779c
 #https://stackoverflow.com/questions/43086548/how-to-manually-specify-class-labels-in-keras-flow-from-directory
+
+#yeild
+#https://stackoverflow.com/questions/39325275/how-to-train-tensorflow-network-using-a-generator-to-produce-inputs
+#https://stackoverflow.com/questions/56079223/custom-keras-data-generator-with-yield
+#https://medium.com/@fromtheast/implement-fit-generator-in-keras-61aa2786ce98
+#https://keras.io/models/sequential/
 class DataGenerator_time(Sequence):
     """Generates data for Keras
     Sequence based data generator. Suitable for building data generator for training and prediction.

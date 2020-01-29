@@ -206,14 +206,13 @@ class Test_mtcnn(Test):
             face = image[y0:y1,x0:x1]
             if sum(np.array(face.shape)==0) == 1:
                 continue
-            if len(faces) == 1:
+            if len(faces) == 0:
                 cur_center= [center_x, center_y]
             else:
                 diff_x = int(crop_size[0]/2) - center_x
                 diff_y = int(crop_size[1]/2) - center_y
-                cur_center = [cur_center[0]+diff_x,cur_center[1]+diff_y]
-                
-                cur_center = [cur_center[0]+center_x,center_y]
+                cur_center = [cur_center[0]-diff_x,cur_center[1]-diff_y]
+               
             face = cv2.resize(face,(256,256))/255.
             faces.append(face)
         return faces

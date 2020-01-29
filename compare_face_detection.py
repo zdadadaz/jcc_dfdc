@@ -15,9 +15,9 @@ from mtcnn import MTCNN
 import face_recognition
 
 from classifiers import *
-classifier = MesoInception4()
-classifier.load('model_bs_ep20.h5')
-
+#classifier = MesoInception4()
+#classifier.load('model_bs_ep20.h5')
+#%matplotlib inline
 detector = MTCNN()
 
 
@@ -41,7 +41,8 @@ def timer(detector, detect_fn, images, *args):
     start = time.time()
     faces = detect_fn(detector, images, *args)
     elapsed = time.time() - start
-    print(f', {elapsed:.3f} seconds')
+#    print(f', {elapsed:.3f} seconds')
+    print("elapsed: ", str(elapsed))
     return faces, elapsed
 
 def detect_mtcnn(detector, images):
@@ -61,6 +62,84 @@ def detect_mtcnn(detector, images):
         # print("score: " + str(score))
         faces.append(face)
     return faces
+
+def face_detect(detector, images,margin= 0):
+    faces = []
+    for image in images:
+        boxes = detector.detect_faces(image)
+        if len(boxes) == 0:
+            continue
+        box = boxes[0]['box']
+        face_position = [0]*4
+        maxframe = max(int(box[3]/2),int(box[2]/2))
+        center_y = box[1]+int(box[3]/2)
+        center_x = box[0]+int(box[2]/2)
+        face_position[0] = center_y-maxframe
+        face_position[2] = center_y+maxframe
+        face_position[3] = center_x-maxframe
+        face_position[1] = center_x+maxframe
+        offset = round(margin * (face_position[2] - face_position[0]))
+        y0 = max(face_position[0] - offset, 0)
+        x1 = min(face_position[1] + offset, image.shape[1])
+        y1 = min(face_position[2] + offset, image.shape[0])
+        x0 = max(face_position[3] - offset, 0)
+        face = image[y0:y1,x0:x1]
+        if sum(np.array(face.shape)==0) == 1:
+            continue
+        face = cv2.resize(face,(299,299))/255.
+        # face = cv2.resize(face,(256,256))/255.
+        faces.append(face)
+    return faces
+
+def face_detect_fast(detector, images, margin=0):
+    faces = []
+    cur_center=[750, 960]
+    crop_size_iist = [(500, 500), (1080,1080)]
+    resize = (256,256)
+    crop_size = crop_size_iist[1]
+    for image in images:
+#        Crop to 1080x1080 and resize to 256x256
+        image_m = image[ :,(960-int(crop_size[1]/2)):(960+int(crop_size[1]/2)), :]
+        image_m = cv2.resize(image_m,(resize[0],resize[1]))
+        boxes = detector.detect_faces(image_m)
+        if len(boxes) == 0:
+#            should jump out and go for normal size
+            continue
+        box = boxes[0]['box']
+        
+        rescale_box = [0]*4
+        rescale_box[0] = int(box[0]/resize[0]* crop_size[0]) + (960-int(crop_size[1]/2))
+        rescale_box[1] = int(box[1]/resize[1]* crop_size[1]) 
+        rescale_box[2] = int(box[2]/resize[0]* crop_size[0]) 
+        rescale_box[3] = int(box[3]/resize[1]* crop_size[1])
+        box = rescale_box
+        
+        face_position = [0]*4
+        maxframe = max(int(box[3]/2),int(box[2]/2))
+        if maxframe<60:
+#            too small face is wrong detection
+            continue
+        center_y = box[1]+int(box[3]/2)
+        center_x = box[0]+int(box[2]/2)
+        face_position[0] = center_y-maxframe
+        face_position[2] = center_y+maxframe
+        face_position[3] = center_x-maxframe
+        face_position[1] = center_x+maxframe
+        
+        offset = round(margin * (face_position[2] - face_position[0]))
+        y0 = max(face_position[0] - offset, 0)
+        x1 = min(face_position[1] + offset, image.shape[1])
+        y1 = min(face_position[2] + offset, image.shape[0])
+        x0 = max(face_position[3] - offset, 0)
+        face = image[y0:y1,x0:x1]
+        if sum(np.array(face.shape)==0) == 1:
+            continue
+   
+        face = cv2.resize(face,(256,256))/255.
+        faces.append(face)
+    return faces
+
+
 
 times_mtcnn = []
 
@@ -83,14 +162,18 @@ def detect_face_recognition(images):
     # print(f', {elapsed:.3f} seconds')
     return faces, elapsed
 
-sample = "test_videos/aabuyfvwrh.mp4"
+sample = "test_videos/aaiqegjkrj.mp4"
 
 reader = cv2.VideoCapture(sample)
 images_1080_1920 = []
 images_720_1280 = []
 images_540_960 = []
+count = 0
 for i in tqdm(range(int(reader.get(cv2.CAP_PROP_FRAME_COUNT)))):
     _, image = reader.read()
+    count+= 1
+    if count % 60 != 0:
+        continue
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     images_1080_1920.append(image)
     images_720_1280.append(cv2.resize(image, (1280, 720)))
@@ -102,20 +185,38 @@ images_720_1280 = np.stack(images_720_1280)
 images_540_960 = np.stack(images_540_960)
 
 
-# MTCNN
-print('Detecting faces in 540x960 frames', end='')
-_, elapsed = timer(detector, detect_mtcnn, images_540_960)
-times_mtcnn.append(elapsed)
 
-print('Detecting faces in 720x1280 frames', end='')
-_, elapsed = timer(detector, detect_mtcnn, images_720_1280)
-times_mtcnn.append(elapsed)
+# MTCNN
+#print('Detecting faces in 540x960 frames', end='')
+#faces, elapsed = timer(detector, face_detect, images_540_960)
+#times_mtcnn.append(elapsed)
+#
+#print('Detecting faces in 720x1280 frames', end='')
+#faces, elapsed = timer(detector, face_detect, images_720_1280)
+#times_mtcnn.append(elapsed)
+#
+#print('Detecting faces in 1080x1920 frames', end='')
+#faces, elapsed = timer(detector, face_detect, images_1080_1920)
+#times_mtcnn.append(elapsed)
+
+#plot_faces(np.stack([cv2.resize(face, (160, 160)) for face in faces]))
+
+
+# MTCNN crop
+#print('Detecting faces in 540x960 frames', end='')
+#_, elapsed = timer(detector, face_detect_fast, images_540_960)
+#times_mtcnn.append(elapsed)
+#
+#print('Detecting faces in 720x1280 frames', end='')
+#_, elapsed = timer(detector, face_detect_fast, images_720_1280)
+#times_mtcnn.append(elapsed)
 
 print('Detecting faces in 1080x1920 frames', end='')
-faces, elapsed = timer(detector, detect_mtcnn, images_1080_1920)
+faces, elapsed = timer(detector, face_detect_fast, images_1080_1920)
 times_mtcnn.append(elapsed)
 
 plot_faces(np.stack([cv2.resize(face, (160, 160)) for face in faces]))
+
 
 # face_recognition
 # print('Detecting faces in 540x960 frames', end='')
