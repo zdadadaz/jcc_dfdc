@@ -13,7 +13,7 @@ from keras.preprocessing.image import img_to_array
 from keras.preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot
 # load the image
-img = load_img('./../db_small/val/real/abpibxailk.mp4_3.jpg')
+img = load_img('./../db_playground/df/114_42.jpg')
 # convert to numpy array
 data = img_to_array(img)
 # expand dimension to one sample
@@ -70,8 +70,12 @@ def compress( img):
     decimg = cv2.imdecode(encimg, 1)
     return decimg.astype("float")
 
-# 
-datagen = ImageDataGenerator(rescale=1./255,preprocessing_function = blur_compress)
+
+from keras.applications.xception import preprocess_input
+ 
+datagen = ImageDataGenerator(preprocessing_function = preprocess_input)
+#datagen = ImageDataGenerator(rescale=1./255,preprocessing_function = blur_compress)
+
 # prepare iterator
 it = datagen.flow(samples, batch_size=1)
 # generate samples and plot
@@ -81,8 +85,9 @@ for i in range(9):
  	# generate batch of images
  	batch = it.next()
  	# convert to unsigned integers for viewing
- 	image = ((batch[0].astype('float') )*256 - 1).astype('uint8')
- 	# image = batch[0].astype('uint8')
+ 	image = batch[0]
+# 	image = ((batch[0].astype('float') )*256 - 1).astype('uint8')
+# 	image = batch[0].astype('uint8')
  	# plot raw pixel data
  	pyplot.imshow(image)
 # show the figure
