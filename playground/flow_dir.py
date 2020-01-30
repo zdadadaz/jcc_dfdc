@@ -10,6 +10,7 @@ import pandas as pd
 from keras.preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot
 
+import os
 import numpy as np
 import cv2
 from tensorflow.keras.utils import Sequence
@@ -30,7 +31,10 @@ from tensorflow.keras.utils import Sequence
 #https://stackoverflow.com/questions/56079223/custom-keras-data-generator-with-yield
 #https://medium.com/@fromtheast/implement-fit-generator-in-keras-61aa2786ce98
 #https://keras.io/models/sequential/
-class DataGenerator_time(Sequence):
+# https://stackoverflow.com/questions/54590826/generator-typeerror-generator-object-is-not-an-iterator/57101352
+# https://stackoverflow.com/questions/55889389/keras-utils-sequence-object-is-not-an-iterator
+# class DataGenerator_time(Sequence):
+class DataGenerator_time(keras.utils.Sequence):
     """Generates data for Keras
     Sequence based data generator. Suitable for building data generator for training and prediction.
     """
@@ -68,77 +72,57 @@ class DataGenerator_time(Sequence):
         :return: number of batches per epoch
         """
         return int(np.floor(len(self.dataframe) / self.batch_size))
+        # return 10
 
     def __getitem__(self, index):
         """Generate one batch of data
         :param index: index of the batch
         :return: X and y when fitting. X only when predicting
         """
-        print(index)
         # Generate indexes of the batch
-#        indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
-
-        # Find list of IDs
-#        list_IDs_temp = [self.list_IDs[k] for k in indexes]
-
-        return [],0
-
-        # Generate data
-#        X = self._generate_X(list_IDs_temp)
-#
-#        if self.to_fit:
-#            y = self._generate_y(list_IDs_temp)
-#            return X, y
-#        else:
-#            return X
-    
-#    def check_para(self)
-
-    def _generate_X(self, list_IDs_temp):
-        """Generates data containing batch_size images
-        :param list_IDs_temp: list of label ids to load
-        :return: batch of images
-        """
-        # Initialization
-        X = np.empty((self.batch_size,self.seq, *self.dim, self.n_channels))
+        indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
+        
+        print(indexes)
+        files_batch = [self.dataframe.iloc[k][0] for k in indexes]
+        y = []
+        for k in indexes:
+            if self.dataframe.iloc[k][1] == "REAL":
+                y.append(1)
+            else:
+                y.append(0)
         
         # Generate data
-        for i in range(len(self.dataframe)):
-            # Store sample
-            vid = self.dataframe.iloc[i][0]
-            file_path = os.path.join(self.directory,vid )
-            if os.path.isfile(file_path):
-                X[i,] = self._load_image(self.directory + self.labels[ID])
-        return X
+        x = self.__data_generation(files_batch)
+        print(x.shape)
+        # x = np.vstack(x)
+        return x, y
 
-    def _generate_y(self, list_IDs_temp):
-        """Generates data containing batch_size masks
-        :param list_IDs_temp: list of label ids to load
-        :return: batch if masks
-        """
-        y = np.empty((self.batch_size, *self.dim), dtype=int)
+       
+    def on_epoch_end(self):
+        'Updates indexes after each epoch'
+        self.indexes = np.arange(len(self.dataframe))
+        if self.shuffle == True:
+            np.random.seed(self.random_state)
+            np.random.shuffle(self.indexes)
 
-        # Generate data
-        for i, ID in enumerate(list_IDs_temp):
-            # Store sample
-            y[i,] = self._load_grayscale_image(self.mask_path + self.labels[ID])
+    def __data_generation(self, files):
+        imgs = []
 
-        return y
-
-    def _load_image(self, image_path):
-        """Load grayscale image
-        :param image_path: path to image to load
-        :return: loaded image
-        """
-        img = cv2.imread(image_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-#        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        if self.rescale:
-            img = img * self.rescale
-        return img
+        for img_file in files:
+            path = os.path.join(self.directory, img_file)
+            # print(path)
+            img = cv2.imread(path)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            img = cv2.resize(img,(self.target_size[0],self.target_size[1]))
+            ###############
+            # Augment image
+            ###############
+            imgs.append(img)
+        imgs = np.stack(imgs)
+        return imgs
 
 
-df_train = pd.read_csv('training_dataset.csv')
+df_train = pd.read_csv('./training_dataset_5.csv')
 
 #datagen=ImageDataGenerator(rescale=1./255)
 #train_generator=datagen.flow_from_dataframe(dataframe=df_train, \
@@ -150,11 +134,10 @@ df_train = pd.read_csv('training_dataset.csv')
 #                                            shuffle=False)
 
 train_generator=DataGenerator_time(dataframe = df_train,\
-                           directory = "./../db_multi_playground",\
+                           directory = "./../../dataset/fb_db/",\
                            x_col="filename", y_col="label", \
                            target_size=(32,32), \
-                           batch_size=1,\
-                           rescale=1./255)
+                           batch_size=10)
 #train_generator=datagen.flow_from_dataframe(dataframe=df_train, \
 #                                            directory="./../db_multi_playground", \
 #                                            x_col="filename", y_col="label", \
@@ -163,9 +146,9 @@ train_generator=DataGenerator_time(dataframe = df_train,\
 #                                            batch_size=2,
 #                                            shuffle=False)
 
-count = 0
-for i in range(5):
-    x,y=train_generator.next()
+# count = 0
+# for i in range(5):
+    # x,y=train_generator.next()
 #    for j in range(len(x)):
 #        image = x[j]
 #        image *= 255
@@ -173,3 +156,48 @@ for i in range(5):
 #        count+= 1
 #        pyplot.imshow(image.astype('uint8'))
        
+import keras
+from keras.datasets import mnist
+from keras.models import Sequential
+from keras.layers import Dense, Activation, Input, Conv2D
+from keras.layers import Input, Dense, Flatten, Conv2D, MaxPooling2D, BatchNormalization, Dropout, Concatenate, LeakyReLU, GlobalMaxPooling2D, Reshape
+
+from keras.layers import SimpleRNN
+from keras import initializers
+from keras.optimizers import RMSprop
+from keras import backend as K
+import numpy as np
+from keras.models import Model as KerasModel
+
+batch_size = 32
+num_classes = 10
+epochs = 2
+# hidden_units = 100
+hidden_units = 10
+
+learning_rate = 1e-6
+clip_norm = 1.0
+
+
+x = Input(shape = (32, 32, 3))
+# x2 = Conv2D(16, (5, 5), padding='same', activation = 'relu')(x)
+# x2 = BatchNormalization()(x2)
+# x2 = MaxPooling2D(pool_size=(2, 2), padding='same')(x2)
+# # y = Flatten()(x2)
+# x3 = Reshape((-1, 16))(x2)
+# y = SimpleRNN(hidden_units,
+#             kernel_initializer=initializers.RandomNormal(stddev=0.001),
+#             recurrent_initializer=initializers.Identity(gain=1.0),
+#             activation='relu', input_shape=(3,128*128,16))(x3)
+
+y = Dense(1)(x)
+
+# model.add(Dense(1))
+model = KerasModel(inputs = x, outputs = y)
+rmsprop = RMSprop(lr=learning_rate)
+model.compile(loss='binary_crossentropy',
+              optimizer=rmsprop,
+              metrics=['accuracy'])
+print(model.summary)
+model.fit_generator(train_generator, steps_per_epoch=10, epochs=1)
+

@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
 from keras.preprocessing.image import ImageDataGenerator
+from keras.applications.xception import preprocess_input
 from keras.callbacks import Callback
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 import cv2
@@ -175,6 +176,13 @@ class Train_xception(Train):
         self.df_train = pd.read_csv(train_path)
         self.df_valid = pd.read_csv(valid_path)
 
+    def augmentation(self):
+        dataGenerator = ImageDataGenerator(preprocessing_function=preprocess_input,\
+                                           horizontal_flip=True)
+        val_dataGenerator = ImageDataGenerator(preprocessing_function=preprocess_input)
+        return dataGenerator, val_dataGenerator
+    
+
     def prepare_input(self):    
         dataGenerator, val_dataGenerator = self.augmentation()
         
@@ -234,8 +242,8 @@ class Train_xception(Train):
 name, classifier, batch_size, epochs = "xception", Xception_main(), 10, 40
 train_path = "./playground/training_dataset_5.csv"
 valid_path = "./playground/valid_dataset_5.csv"
-# classifier.load("weight_tmp/xception-01-0.76_fc.hdf5")
-classifier.load("result/xception/x1.0.0/xception-08-0.66.hdf5")
+classifier.load("./result/xception/x1.1.0/xception-01-0.66.hdf5")
+# classifier.load("result/xception/x1.0.0/xception-08-0.66.hdf5")
 train = Train_xception(name, classifier,train_path,valid_path, batch_size=batch_size,  epochs= epochs)
 tgen, vgen = train.prepare_input()
 train.fit(tgen, vgen)

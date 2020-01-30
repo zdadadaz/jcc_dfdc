@@ -19,7 +19,8 @@ from sklearn.utils import resample
 import cv2
 from sklearn.metrics import log_loss
 from mtcnn import MTCNN
-
+from keras.applications.xception import preprocess_input
+import time
 # import seaborn as sns
 # import matplotlib.pylab as plt
 
@@ -39,6 +40,8 @@ class Test():
         self.submission = None
         self.final_score = None
         self.final_score_clip = None
+        self.size_for_testing = arg['size_for_testing']
+        self.rescale = arg['rescale']
         
     def prepare_data(self):
         dir_json = self.dir_json
@@ -106,7 +109,7 @@ class Test():
         final_score_clip = log_loss(list(datasets['label']), submit_score_clip)
         
         submission = pd.DataFrame(submit, columns=['filename', 'label']).fillna(0.5)
-        submission.sort_values('filename').to_csv('submission_'+ self.name +'.csv', index=False)
+        # submission.sort_values('filename').to_csv('submission_'+ self.name +'.csv', index=False)
         
         print(self.name + " final_score = " + str(final_score))
         print(self.name + " final_score clip = " + str(final_score_clip))
@@ -155,6 +158,9 @@ class Test_mtcnn(Test):
             box = boxes[0]['box']
             face_position = [0]*4
             maxframe = max(int(box[3]/2),int(box[2]/2))
+            if maxframe<=30:
+    #            too small face is wrong detection
+                continue
             center_y = box[1]+int(box[3]/2)
             center_x = box[0]+int(box[2]/2)
             face_position[0] = center_y-maxframe
@@ -169,35 +175,46 @@ class Test_mtcnn(Test):
             face = image[y0:y1,x0:x1]
             if sum(np.array(face.shape)==0) == 1:
                 continue
-            face = cv2.resize(face,(299,299))/255.
+            face = cv2.resize(face,(self.size_for_testing,self.size_for_testing),interpolation=cv2.INTER_NEAREST)/self.rescale
             # face = cv2.resize(face,(256,256))/255.
             faces.append(face)
         return faces
     
-    def face_detect_fast(self, images):
+    def face_detect_fast_resize(self,images):
         faces = []
-        cur_center=None
-        crop_size_iist = [(500, 500), (1080,1920)]
-        crop_size = crop_size_iist[0]
+        cur_center=[750, 960]
+        crop_size_iist = [(500, 500), (1080,1080)]
+        resize = (256,256)
+        crop_size = crop_size_iist[1]
         for image in images:
-            if len(faces) != 0:
-                y0 = max(0,(cur_center[1]-int(crop_size[1]/2)))
-                y1 = min(1920, (cur_center[1]+int(crop_size[1]/2)))
-                x0 = max(0, (cur_center[0]-int(crop_size[0]/2)))
-                x1 = min(1080, (cur_center[0]+int(crop_size[0]/2)))
-                image = image[y0:y1, x0:x1, :]
-            boxes = self.detector.detect_faces(image)
+    #        Crop to 1080x1080 and resize to 256x256
+            image_m = image[ :,(960-int(crop_size[1]/2)):(960+int(crop_size[1]/2)), :]
+            image_m = cv2.resize(image_m,(resize[0],resize[1]))
+            boxes = self.detector.detect_faces(image_m)
             if len(boxes) == 0:
-                continue
+    #            should jump out and go for normal size
+                break
             box = boxes[0]['box']
+            
+            rescale_box = [0]*4
+            rescale_box[0] = int(box[0]/resize[0]* crop_size[0]) + (960-int(crop_size[1]/2))
+            rescale_box[1] = int(box[1]/resize[1]* crop_size[1]) 
+            rescale_box[2] = int(box[2]/resize[0]* crop_size[0]) 
+            rescale_box[3] = int(box[3]/resize[1]* crop_size[1])
+            box = rescale_box
+            
             face_position = [0]*4
             maxframe = max(int(box[3]/2),int(box[2]/2))
+            if maxframe<=30:
+    #            too small face is wrong detection
+                continue
             center_y = box[1]+int(box[3]/2)
             center_x = box[0]+int(box[2]/2)
-            face_position[0] = center_y-maxframe
+            face_position[0] = center_y-maxframe 
             face_position[2] = center_y+maxframe
             face_position[3] = center_x-maxframe
             face_position[1] = center_x+maxframe
+                     
             offset = round(self.margin * (face_position[2] - face_position[0]))
             y0 = max(face_position[0] - offset, 0)
             x1 = min(face_position[1] + offset, image.shape[1])
@@ -205,17 +222,12 @@ class Test_mtcnn(Test):
             x0 = max(face_position[3] - offset, 0)
             face = image[y0:y1,x0:x1]
             if sum(np.array(face.shape)==0) == 1:
-                continue
-            if len(faces) == 0:
-                cur_center= [center_x, center_y]
-            else:
-                diff_x = int(crop_size[0]/2) - center_x
-                diff_y = int(crop_size[1]/2) - center_y
-                cur_center = [cur_center[0]-diff_x,cur_center[1]-diff_y]
-               
-            face = cv2.resize(face,(256,256))/255.
+                break
+       
+            face = cv2.resize(face,(self.size_for_testing,self.size_for_testing),interpolation=cv2.INTER_NEAREST)/self.rescale
             faces.append(face)
         return faces
+       
 
 class Test_base(Test):
     def __init__(self, arg):
@@ -231,7 +243,7 @@ class Test_base(Test):
                 y1 = min(face_position[2] + offset, img.shape[0])
                 x0 = max(face_position[3] - offset, 0)
                 face = img[y0:y1,x0:x1]
-                inp = cv2.resize(face,(256,256))/255.
+                inp = cv2.resize(face,(self.size_for_testing,self.size_for_testing),interpolation=cv2.INTER_NEAREST)/self.rescale
                 faces.append(inp)
         return faces
 
@@ -257,29 +269,110 @@ class Test_mtcnn_fft(Test_mtcnn):
             faces.append(self.dft2(im))
         return faces 
 
+class Test_mtcnn_xception(Test_mtcnn):
+    def __init__(self, arg):
+        super().__init__(arg)
+    def transform(self, images):
+        images = np.stack(images)
+        faces = preprocess_input(images)
+        return faces 
+    
+    def predict(self, classifier, datasets, preprocess= False, save = False):
+        submit = []
+        save_interval = self.save_interval
+        total_num = len(datasets)
+        for v in range(total_num):
+            print("index: "+str(v)+" /"+ str(total_num))
+            vi = datasets.iloc[v][0]
+            re_video = 0.5
+            try:
+            # read video
+                count = 0
+                reader = cv2.VideoCapture(os.path.join(self.dirname, vi))
+                images = []
+                for i in range(int(reader.get(cv2.CAP_PROP_FRAME_COUNT))):
+                    _, image = reader.read()
+                    if i % save_interval != 0:
+                        continue
+                    if count == 10:
+                        break
+                    count+=1
+                    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                    images.append(image)
+                reader.release()
+                images = np.stack(images)
+                re_imgs = []
+                # detect face 
+                faces = self.face_detect_fast_resize(images)
+                if len(faces) != len(images):
+                    faces = self.face_detect(images)
+                if save:
+                    for i in range(len(faces)):
+                        imageio.imwrite(os.path.join('./tmp_mtcnn',vi+"_"+str(i)+"_"+str(0)+".jpg"),faces[i],'jpg')
+                if preprocess:
+                    faces = self.transform(faces)
+                re_imgs = classifier.predict(np.array(faces))
+                re_video = np.average(re_imgs)
+                if np.isnan(re_video):
+                    re_video = 0.5
+                print("score = "+str(re_video))
+            except:
+                re_video = 0.5
+                print("some error")
+                print("score = "+str(re_video))
+            # submit.append([vi,re_video])
+            submit.append([vi,1.0-re_video])
+        
+        submit_score = [[i[1], 1-i[1]] for i in submit]
+        final_score = log_loss(list(datasets['label']), submit_score)
+        
+        submit_score_clip = [[self.clip(i[1]), 1-self.clip(i[1])] for i in submit]
+        final_score_clip = log_loss(list(datasets['label']), submit_score_clip)
+        
+        submission = pd.DataFrame(submit, columns=['filename', 'label']).fillna(0.5)
+        # submission.sort_values('filename').to_csv('submission_'+ self.name +'.csv', index=False)
+        
+        print(self.name + " final_score = " + str(final_score))
+        print(self.name + " final_score clip = " + str(final_score_clip))
+        self.submission = submission
+        self.final_score = final_score
+        self.final_score_clip = final_score_clip
+        return submission, final_score
     
 # =============================================================================
 # coefficient
 # =============================================================================
+# arg = {}
+# arg['name'] = "base_fft"
+# arg['save_interval'] = 150
+# arg['margin']=0.2
+# arg['dirname'] = "./../fb_whole/dfdc_train_part_21"
+# arg['dir_json'] = './../fb_whole/metadata_21.json'
+# arg['size_for_testing'] = 256
+
 arg = {}
-arg['name'] = "base_fft"
-arg['save_interval'] = 150
-arg['margin']=0.2
-arg['dirname'] = "./../fb_whole/dfdc_train_part_21"
-arg['dir_json'] = './../fb_whole/metadata_21.json'
+arg['name'] = "mtcnn"
+arg['save_interval'] = 75
+arg['margin']=0
+arg['dirname'] = "./../fb_whole/dfdc_train_part_24"
+arg['dir_json'] = './../fb_whole/metadata_24.json'
+arg['size_for_testing'] = 299
+arg['rescale'] = 1.0
 
 arg_m = {}
-arg_m['name'] = "mtcnn_fft"
-arg_m['save_interval'] = 75
+arg_m['name'] = "mtcnn_fast"
+arg_m['save_interval'] = 30
 arg_m['margin']=0
-arg_m['dirname'] = "./../fb_whole/dfdc_train_part_21"
-arg_m['dir_json'] = './../fb_whole/metadata_21.json'
-
+arg_m['dirname'] = "./../fb_whole/dfdc_train_part_24"
+arg_m['dir_json'] = './../fb_whole/metadata_24.json'
+arg_m['size_for_testing'] = 299
+arg_m['rescale'] = 1.0
 # =============================================================================
 # declare module class
 # =============================================================================
 # test_base = Test_base_fft(arg)
-test_mtcnn = Test_mtcnn_fft(arg_m)
+test_mtcnn = Test_mtcnn(arg)
+test_mtcnn_fast = Test_mtcnn_xception(arg_m)
 
 # classifier = MesoInception4()
 # classifier.load('weight_tmp/mesoInc4_aug-26-0.38.hdf5')
@@ -290,8 +383,26 @@ test_mtcnn = Test_mtcnn_fft(arg_m)
 # Testing
 # =============================================================================
 classifier = Xception_main()
-classifier.load('weight_tmp/xception-02-0.39.hdf5')
+# classifier.load('./result/xception/x1.0.1/xception-02-0.39.hdf5')
+# classifier.load('./result/xception/x1.1.1/xception-01-0.36.hdf5')
+classifier.load('./result/xception/x1.1.1/xception-02-0.34.hdf5')
 data = test_mtcnn.prepare_data()
 
-test_mtcnn.predict(classifier, data, preprocess=False)
+times = []
+# start = time.time()
+# test_mtcnn.predict(classifier, data, preprocess=False)
+# elapsed = time.time() - start
+# times.append(elapsed)
+# print("elapsed: ", str(elapsed))
+
+start = time.time()
+test_mtcnn_fast.predict(classifier, data, preprocess=True, save = False)
+elapsed = time.time() - start
+print("elapsed: ", str(elapsed))
 # test_base.predict(classifier, data, preprocess=True)
+times.append(elapsed)
+
+aa = test_mtcnn_fast.submission
+aa['correct'] = ((aa['label']>0.5) ^ (data['label']=="FAKE"))
+aa['correct'] =  ~aa['correct']
+

@@ -116,7 +116,7 @@ def face_detect_fast(detector, images, margin=0):
         
         face_position = [0]*4
         maxframe = max(int(box[3]/2),int(box[2]/2))
-        if maxframe<60:
+        if maxframe<=30:
 #            too small face is wrong detection
             continue
         center_y = box[1]+int(box[3]/2)
@@ -162,7 +162,7 @@ def detect_face_recognition(images):
     # print(f', {elapsed:.3f} seconds')
     return faces, elapsed
 
-sample = "test_videos/aaiqegjkrj.mp4"
+sample = "./../fb_whole/dfdc_train_part_24/aadubxfxhr.mp4"
 
 reader = cv2.VideoCapture(sample)
 images_1080_1920 = []
@@ -175,6 +175,7 @@ for i in tqdm(range(int(reader.get(cv2.CAP_PROP_FRAME_COUNT)))):
     if count % 60 != 0:
         continue
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    print(type(image))
     images_1080_1920.append(image)
     images_720_1280.append(cv2.resize(image, (1280, 720)))
     images_540_960.append(cv2.resize(image, (960, 540)))
@@ -184,12 +185,13 @@ images_1080_1920 = np.stack(images_1080_1920)
 images_720_1280 = np.stack(images_720_1280)
 images_540_960 = np.stack(images_540_960)
 
-
+from keras.applications.xception import preprocess_input
+out = preprocess_input(images_540_960)
 
 # MTCNN
-#print('Detecting faces in 540x960 frames', end='')
-#faces, elapsed = timer(detector, face_detect, images_540_960)
-#times_mtcnn.append(elapsed)
+# print('Detecting faces in 540x960 frames', end='')
+# faces, elapsed = timer(detector, face_detect, images_540_960)
+# times_mtcnn.append(elapsed)
 #
 #print('Detecting faces in 720x1280 frames', end='')
 #faces, elapsed = timer(detector, face_detect, images_720_1280)
@@ -199,7 +201,7 @@ images_540_960 = np.stack(images_540_960)
 #faces, elapsed = timer(detector, face_detect, images_1080_1920)
 #times_mtcnn.append(elapsed)
 
-#plot_faces(np.stack([cv2.resize(face, (160, 160)) for face in faces]))
+# plot_faces(np.stack([cv2.resize(face, (160, 160)) for face in faces]))
 
 
 # MTCNN crop
@@ -211,11 +213,11 @@ images_540_960 = np.stack(images_540_960)
 #_, elapsed = timer(detector, face_detect_fast, images_720_1280)
 #times_mtcnn.append(elapsed)
 
-print('Detecting faces in 1080x1920 frames', end='')
-faces, elapsed = timer(detector, face_detect_fast, images_1080_1920)
-times_mtcnn.append(elapsed)
+# print('Detecting faces in 1080x1920 frames', end='')
+# faces, elapsed = timer(detector, face_detect_fast, images_1080_1920)
+# times_mtcnn.append(elapsed)
 
-plot_faces(np.stack([cv2.resize(face, (160, 160)) for face in faces]))
+# plot_faces(np.stack([cv2.resize(face, (160, 160)) for face in faces]))
 
 
 # face_recognition

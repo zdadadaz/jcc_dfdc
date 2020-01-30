@@ -217,31 +217,31 @@ valid_folder_list = create_folder_list(valid_arr)
 test_arr = random_int_arr(test_folder_number, existed_arr)
 test_folder_list = create_folder_list(test_arr)
 
-print("sample for training")
-loop_for_sample_data(train_folder_list, "train", df)
-print("sample for validation")
-loop_for_sample_data(valid_folder_list, "valid", df)
-print("sample for testing")
-loop_for_sample_data(test_folder_list, "test", df)
+# print("sample for training")
+# loop_for_sample_data(train_folder_list, "train", df)
+# print("sample for validation")
+# loop_for_sample_data(valid_folder_list, "valid", df)
+# print("sample for testing")
+# loop_for_sample_data(test_folder_list, "test", df)
 
-df.sort_values('filename').to_csv('dataset_vid_2.csv', index=False)
+# df.sort_values('filename').to_csv('dataset_vid_2.csv', index=False)
 
 
-# Create list of files for training
-train_df = df[df['split']=='train']
-print("create output file for training")
-out_train_df = create_training_file(train_df)
-out_train_df.to_csv('training_dataset_2.csv', index=False)
+# # Create list of files for training
+# train_df = df[df['split']=='train']
+# print("create output file for training")
+# out_train_df = create_training_file(train_df)
+# out_train_df.to_csv('training_dataset_2.csv', index=False)
 
-valid_df = df[df['split']=='valid']
-print("create output file for validation")
-out_valid_df = create_training_file(valid_df)
-out_valid_df.to_csv('valid_dataset_2.csv', index=False)
+# valid_df = df[df['split']=='valid']
+# print("create output file for validation")
+# out_valid_df = create_training_file(valid_df)
+# out_valid_df.to_csv('valid_dataset_2.csv', index=False)
 
-test_df = df[df['split']=='test']
-print("create output file for testing")
-out_test_df = create_training_file(test_df)
-out_test_df.to_csv('test_dataset_2.csv', index=False)
+# test_df = df[df['split']=='test']
+# print("create output file for testing")
+# out_test_df = create_training_file(test_df)
+# out_test_df.to_csv('test_dataset_2.csv', index=False)
 
 
 

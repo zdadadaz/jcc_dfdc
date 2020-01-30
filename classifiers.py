@@ -11,7 +11,7 @@ from keras.optimizers import Adam, SGD
 from models.SpatialPyramidPooling import SpatialPyramidPooling
 
 from keras.applications import MobileNet, Xception
-from keras.applications.mobilenet import preprocess_input
+
 
 IMGWIDTH = 256
 
@@ -175,7 +175,7 @@ class Xception_main(Classifier):
             layer.trainable = True
         for layer in self.model.layers[self.based_model_last_block_layer_number:]:
             layer.trainable = True
-        print(self.model.summary())
+        # print(self.model.summary())
         
         self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
         
@@ -191,6 +191,30 @@ class Xception_main(Classifier):
         y = Dense(1, activation='sigmoid', name='predictions')(x)
     
         return KerasModel(inputs=base_model.input,outputs=y)
+
+class Xception_main_noTop(Classifier):
+    def __init__(self, learning_rate = 0.0001):
+           self.model = self.init_model()
+           self.based_model_last_block_layer_number = 132
+           optimizer = Adam(lr = learning_rate)
+           # optimizer = SGD(lr = 0.001)
+           #        set trainable layer
+           for layer in self.model.layers[:self.based_model_last_block_layer_number]:
+               layer.trainable = True
+           for layer in self.model.layers[self.based_model_last_block_layer_number:]:
+               layer.trainable = True
+           print(self.model.summary())
+           
+           self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
+
+    def init_model(self):
+            img_width, img_height = 299, 299
+            base_class = Xception_main()
+            base_model = base_class.init_model()
+            base_model.load_weights('result/xception/x1.0.1/xception-02-0.39.hdf5')
+            
+            return KerasModel(inputs=base_model.input,outputs=base_model.layers[-2].output)
+
 
 class Xception_main_drop(Classifier):
 #    Reference
