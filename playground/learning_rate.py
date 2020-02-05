@@ -37,10 +37,13 @@ class StepDecay(LearningRateDecay):
         # compute the learning rate for the current epoch
         exp = np.floor((1 + epoch) / self.dropEvery)
         alpha = float(self.initAlpha * (self.factor ** exp))
-        alpha = 1e-6 if alpha < float(alpha) else alpha
+        alpha = 1e-6 if alpha < float(1e-6) else alpha
 		# return the learning rate
         return float(alpha)
 
-#schedule = StepDecay(initAlpha=1e-3, factor=0.1, dropEvery=2)
-#callbacks = [LearningRateScheduler(schedule)]
-#history.history['lr']
+schedule = StepDecay(initAlpha=1e-3, factor=0.1, dropEvery=1)
+# callbacks = [LearningRateScheduler(schedule)]
+# history.history['lr']
+schedule.plot([i for i in range(10)])
+        
+    

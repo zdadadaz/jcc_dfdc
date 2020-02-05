@@ -13,7 +13,8 @@ from keras.preprocessing.image import img_to_array
 from keras.preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot
 # load the image
-img = load_img('./../db_playground/df/114_42.jpg')
+# img = load_img('./../db_playground/df/114_42.jpg')
+img = load_img("./../../dataset/db_small/val/real/abpibxailk.mp4_3.jpg")
 # convert to numpy array
 data = img_to_array(img)
 # expand dimension to one sample
@@ -70,10 +71,34 @@ def compress( img):
     decimg = cv2.imdecode(encimg, 1)
     return decimg.astype("float")
 
+def _dft2_onechennel(image):
+    f = np.fft.fft2(image)
+    fshift = np.fft.fftshift(f)
+    a = np.log(np.abs(fshift)+1e-9)
+    a = a - np.mean(a)
+    std = np.std(a)
+    if std is not None:
+        a /= std
+    a = (a+1e-9) / (np.max(np.abs(a))+1e-9)
+    return a
+
+def _preprocess_fft( image):
+    out = []
+    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    ft = _dft2_onechennel(gray)
+    image = preprocess_input(image)
+    for i in range(3):
+        out.append(image[:,:,1])
+    out.append(ft)
+    out = np.stack(out)
+    out = np.transpose(out, (1, 2, 0))
+    return out
+    
+
 
 from keras.applications.xception import preprocess_input
  
-datagen = ImageDataGenerator(preprocessing_function = preprocess_input)
+datagen = ImageDataGenerator(preprocessing_function = _preprocess_fft)
 #datagen = ImageDataGenerator(rescale=1./255,preprocessing_function = blur_compress)
 
 # prepare iterator

@@ -132,21 +132,21 @@ def create_training_file(train_df):
     filenmes = []
     labels = []   
     number_of_image_per_video_local = number_of_image_per_video
-    mapping2pervideo = [0]*16
-    mapping2pervideo[15]=6
-    mapping2pervideo[14]=6
-    mapping2pervideo[13]=6
-    mapping2pervideo[12]=6
-    mapping2pervideo[11]=3
-    mapping2pervideo[10]=3
-    mapping2pervideo[9]=3
-    mapping2pervideo[8]=3
-    mapping2pervideo[7]=3
-    mapping2pervideo[6]=3
-    mapping2pervideo[5]=3
-    mapping2pervideo[4]=3
-    mapping2pervideo[3]=2
-    mapping2pervideo[2]=1
+    # mapping2pervideo = [0]*16
+    # mapping2pervideo[15]=6
+    # mapping2pervideo[14]=6
+    # mapping2pervideo[13]=6
+    # mapping2pervideo[12]=6
+    # mapping2pervideo[11]=3
+    # mapping2pervideo[10]=3
+    # mapping2pervideo[9]=3
+    # mapping2pervideo[8]=3
+    # mapping2pervideo[7]=3
+    # mapping2pervideo[6]=3
+    # mapping2pervideo[5]=3
+    # mapping2pervideo[4]=3
+    # mapping2pervideo[3]=2
+    # mapping2pervideo[2]=1
     
     for i in range(len(train_df)):
         vid = train_df.iloc[i,0]
@@ -155,8 +155,8 @@ def create_training_file(train_df):
         fn = train_df.iloc[i,5]
         if fn > 15:
             fn = 15
-        step = mapping2pervideo[fn]
-        # step = fn//number_of_image_per_video_local
+        # step = mapping2pervideo[fn]
+        step = fn//number_of_image_per_video_local
         count = 0
         for s in range(0,fn,step):
             count += 1
@@ -185,7 +185,11 @@ def random_int_arr(random_number, arr):
     return out
 
 folder = "./../../dataset/fb_db"
-df_file= "./../metadata_small.csv"
+# df_file= "./../metadata_small.csv"
+
+# train_folder_number = 20
+# valid_folder_number = 5
+# test_folder_number = 2
 
 train_folder_number = 35
 valid_folder_number = 10
@@ -194,54 +198,62 @@ test_folder_number = 5
 real_ratio = 1
 
 
-df = pd.read_csv(df_file)                
-df = df.drop(columns=['video.@width', 'video.@height'])
-df.set_index('filename')
+# df = pd.read_csv(df_file)                
+# df = df.drop(columns=['video.@width', 'video.@height'])
+# df.set_index('filename')
 
 #initialize frame number
-df['split']=["None" for i in range(len(df))]
+# df['split']=["None" for i in range(len(df))]
 # df['frame_num']=[15 for i in range(len(df))]
 print("check frame number")
 # check_frame_number(folder, df)
 # df.sort_values('filename').to_csv('dataset_orginal.csv', index=False)
-df = pd.read_csv("./dataset_orginal.csv")
+# df = pd.read_csv("./dataset_orginal.csv")
+df = pd.read_csv("./dataset_orginal_no_audio.csv")
 
 # loop_for_reorder(df, folder)
 
 print(" Sample dataframe")
 existed_arr = [i for i in range(50)]
+# existed_arr = [6, 36, 37, 28, 43, 49, 5, 33, 20, 42, 0, 11, 18, 45, 38, 25, 26, 35, 17, 7, 47, 31, 32, 19, 21, 13, 1, 4, 12, 27, 40, 22, 29, 9, 16]
 train_arr = random_int_arr(train_folder_number, existed_arr)
 train_folder_list = create_folder_list(train_arr)
+# existed_arr = [34, 3, 44, 46, 23, 39, 15, 8, 14, 2]
 valid_arr = random_int_arr(valid_folder_number, existed_arr)
 valid_folder_list = create_folder_list(valid_arr)
+# existed_arr = [24, 30, 41, 48, 10]
 test_arr = random_int_arr(test_folder_number, existed_arr)
 test_folder_list = create_folder_list(test_arr)
 
-# print("sample for training")
-# loop_for_sample_data(train_folder_list, "train", df)
-# print("sample for validation")
-# loop_for_sample_data(valid_folder_list, "valid", df)
-# print("sample for testing")
-# loop_for_sample_data(test_folder_list, "test", df)
+# print(train_arr)
+# print(valid_arr)
+# print(test_arr)
 
-# df.sort_values('filename').to_csv('dataset_vid_2.csv', index=False)
+print("sample for training")
+loop_for_sample_data(train_folder_list, "train", df)
+print("sample for validation")
+loop_for_sample_data(valid_folder_list, "valid", df)
+print("sample for testing")
+loop_for_sample_data(test_folder_list, "test", df)
+
+df.sort_values('filename').to_csv('dataset_vid_5.csv', index=False)
 
 
-# # Create list of files for training
-# train_df = df[df['split']=='train']
-# print("create output file for training")
-# out_train_df = create_training_file(train_df)
-# out_train_df.to_csv('training_dataset_2.csv', index=False)
+# Create list of files for training
+train_df = df[df['split']=='train']
+print("create output file for training")
+out_train_df = create_training_file(train_df)
+out_train_df.to_csv('training_dataset_5.csv', index=False)
 
-# valid_df = df[df['split']=='valid']
-# print("create output file for validation")
-# out_valid_df = create_training_file(valid_df)
-# out_valid_df.to_csv('valid_dataset_2.csv', index=False)
+valid_df = df[df['split']=='valid']
+print("create output file for validation")
+out_valid_df = create_training_file(valid_df)
+out_valid_df.to_csv('valid_dataset_5.csv', index=False)
 
-# test_df = df[df['split']=='test']
-# print("create output file for testing")
-# out_test_df = create_training_file(test_df)
-# out_test_df.to_csv('test_dataset_2.csv', index=False)
+test_df = df[df['split']=='test']
+print("create output file for testing")
+out_test_df = create_training_file(test_df)
+out_test_df.to_csv('test_dataset_5.csv', index=False)
 
 
 

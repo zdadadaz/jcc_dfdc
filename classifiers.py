@@ -10,8 +10,8 @@ from keras.layers import TimeDistributed, LSTM
 from keras.optimizers import Adam, SGD
 from models.SpatialPyramidPooling import SpatialPyramidPooling
 
-from keras.applications import MobileNet, Xception
-
+from keras.applications import MobileNet, Xception, ResNet50
+from models.tcn import ED_TCN, BidirLSTM
 
 IMGWIDTH = 256
 
@@ -165,7 +165,7 @@ class Xception_main(Classifier):
 #    https://www.groundai.com/project/faceforensics-learning-to-detect-manipulated-facial-images/1
 #    https://medium.com/@gkadusumilli/image-recognition-using-pre-trained-xception-model-in-5-steps-96ac858f4206
 #     learning-rate of 0.0002 and a batch-size of 32
-    def __init__(self, learning_rate = 0.0001):
+    def __init__(self, learning_rate = 0.000001):
         self.model = self.init_model()
         self.based_model_last_block_layer_number = 132
         optimizer = Adam(lr = learning_rate)
@@ -208,22 +208,21 @@ class Xception_main_noTop(Classifier):
            self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
 
     def init_model(self):
-            img_width, img_height = 299, 299
             base_class = Xception_main()
             base_model = base_class.init_model()
-            base_model.load_weights('result/xception/x1.0.1/xception-02-0.39.hdf5')
+            base_model.load_weights('result/xception/x1.1.1/xception-02-0.34.hdf5')
             
             return KerasModel(inputs=base_model.input,outputs=base_model.layers[-2].output)
 
 
-class Xception_main_drop(Classifier):
+class Xception_spp(Classifier):
 #    Reference
 #    https://www.groundai.com/project/faceforensics-learning-to-detect-manipulated-facial-images/1
 #    https://medium.com/@gkadusumilli/image-recognition-using-pre-trained-xception-model-in-5-steps-96ac858f4206
 #     learning-rate of 0.0002 and a batch-size of 32
     def __init__(self, learning_rate = 0.0001):
         self.model = self.init_model()
-        self.based_model_last_block_layer_number = 132
+        self.based_model_last_block_layer_number = 131
         optimizer = Adam(lr = learning_rate)
         # optimizer = SGD(lr = 0.001)
         #        set trainable layer
@@ -234,22 +233,21 @@ class Xception_main_drop(Classifier):
         print(self.model.summary())
         
         self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
-        
-    def init_model(self, include_top = True):
+    
+    def init_model(self):
         img_width, img_height = 299, 299
         base_model = Xception(input_shape=(img_width, img_height, 3), weights='imagenet', include_top=False)
+        # base_class = Xception_main()
+        # base_model = base_class.init_model()
+        # base_model.load_weights('result/xception/x1.1.1/xception-02-0.34.hdf5')
+        # x = base_model.layers[-3].output
         
         # Top Model Block
         x = base_model.output
-        x = GlobalAveragePooling2D()(x)
-        # y = Dense(1, activation='sigmoid', name='predictions')(x)
-        
-        y = Dropout(0.5)(x)
-        y = Dense(16)(y)
-        y = LeakyReLU(alpha=0.1)(y)
-        y = Dropout(0.5)(y)
-        y = Dense(1, activation = 'sigmoid')(y)
-        
+        # x = GlobalAveragePooling2D()(x)
+        x = SpatialPyramidPooling([1, 2, 4])(x)
+        y = Dense(1, activation='sigmoid', name='predictions')(x)
+    
         return KerasModel(inputs=base_model.input,outputs=y)
 
 
@@ -287,18 +285,32 @@ class Meso_lstm(Classifier):
         return KerasModel(inputs=x,outputs=y)
         
         
-class meso_wavelet(Classifier):
-    def __init__(self, learning_rate = 0.001):
+class Resnet_main(Classifier):
+    def __init__(self, learning_rate = 0.0001):
         self.model = self.init_model()
-        optimizer = Adam(lr = learning_rate)
+        self.based_model_last_block_layer_number = 174
+        # optimizer = Adam(lr = learning_rate)
+        optimizer = SGD(lr = learning_rate)
+        #        set trainable layer
+        for layer in self.model.layers[:self.based_model_last_block_layer_number]:
+            layer.trainable = True
+        for layer in self.model.layers[self.based_model_last_block_layer_number:]:
+            layer.trainable = True
+        print(self.model.summary())
+        
         self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
-    
+        
     def init_model(self):
-        x = Input(shape = (128, 128, 12))
-        x2 = Conv2D(16, (5, 5), padding='same', activation = 'relu')(x)
-        # x2 = BatchNormalization()(x2)
-        # x2 = MaxPooling2D(pool_size=(2, 2), padding='same')(x2)
-        # y = Flatten()(x2)
+        img_width, img_height = 224, 224
+        base_model = ResNet50(input_shape=(img_width, img_height, 3), weights='imagenet', include_top=False)
+        
+        # Top Model Block
+        x = base_model.output
+        x = GlobalAveragePooling2D()(x)
+        y = Dense(1, activation='sigmoid', name='predictions')(x)
+    
+        return KerasModel(inputs=base_model.input,outputs=y)
+
 
 class MobileNet_mian(Classifier):
     def __init__(self, learning_rate = 0.001):    
@@ -322,3 +334,93 @@ class MobileNet_mian(Classifier):
         
         return KerasModel(inputs=base_model.input,outputs=y)
 
+
+from models.se_resnet import SEResNet50
+
+class Se_resnet_main(Classifier):
+    
+    def __init__(self, learning_rate = 0.001):
+        self.model = self.init_model()
+        self.based_model_last_block_layer_number = 249
+        # optimizer = Adam(lr = learning_rate)
+        optimizer = SGD(lr = learning_rate, momentum = 0.9)
+        #        set trainable layer
+        for layer in self.model.layers[:self.based_model_last_block_layer_number]:
+            layer.trainable = True
+        for layer in self.model.layers[self.based_model_last_block_layer_number:]:
+            layer.trainable = True
+        print(self.model.summary())
+        
+        self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
+    
+    def init_model(self):
+        base_model = SEResNet50(input_shape=(224,224,3),width=1,bottleneck=True,weight_decay=1e-4,include_top=False,weights="imagenet",input_tensor=None,pooling=None, classes=1)
+        x = base_model.output
+        x = GlobalAveragePooling2D()(x)
+        y = Dense(1, activation='sigmoid', name='predictions')(x)
+    
+        return KerasModel(inputs=base_model.input,outputs=y)
+
+
+class tcn_main(Classifier):
+    
+    def __init__(self, learning_rate = 0.000001):
+        self.model = self.init_model()
+        # self.based_model_last_block_layer_number = 249
+        optimizer = Adam(lr = learning_rate)
+        # optimizer = SGD(lr = learning_rate, momentum = 0.9)
+        #        set trainable layer
+        # for layer in self.model.layers[:self.based_model_last_block_layer_number]:
+        #     layer.trainable = True
+        # for layer in self.model.layers[self.based_model_last_block_layer_number:]:
+        #     layer.trainable = True
+        print(self.model.summary())
+        # model.compile(loss=loss, optimizer=optimizer, sample_weight_mode="temporal", metrics=['accuracy'])
+        self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy',sample_weight_mode="temporal", metrics = ['accuracy'])
+    
+    def init_model(self):
+        # input (batch, time, feature)
+        # ex: (10, 5, 2048)
+        n_feat = 2048
+        max_len = 5
+        conv = 20 #[25,20,5]
+        causal = False
+        n_nodes = [64, 96]
+        n_classes = 1
+        model, param_str = ED_TCN(n_nodes, conv, n_classes, n_feat, max_len, causal=causal, 
+                                        activation='norm_relu', return_param_str=True) 
+        # print(param_str)
+
+        return model
+    
+class bitslm_main(Classifier):
+    
+    def __init__(self, learning_rate = 0.000001):
+        self.model = self.init_model()
+        self.based_model_last_block_layer_number = 249
+        optimizer = Adam(lr = learning_rate)
+        # optimizer = SGD(lr = learning_rate, momentum = 0.9)
+        #        set trainable layer
+        # for layer in self.model.layers[:self.based_model_last_block_layer_number]:
+        #     layer.trainable = True
+        # for layer in self.model.layers[self.based_model_last_block_layer_number:]:
+        #     layer.trainable = True
+        print(self.model.summary())
+        self.model.compile(optimizer=optimizer, loss='binary_crossentropy', sample_weight_mode="temporal", metrics=['accuracy'])
+    
+        # self.model.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
+    
+    def init_model(self):
+        # input (batch, time, feature)
+        # ex: (10, 5, 2048)
+        n_feat = 2048
+        max_len = 5
+        conv = 25 #[25,20,5]
+        causal = False
+        n_nodes = [64, 96]
+        n_classes = 1
+        # model, param_str = ED_TCN(n_nodes, conv, n_classes, n_feat, max_len, causal=causal, 
+        #                                 activation='norm_relu', return_param_str=True) 
+        model, param_str = BidirLSTM(n_nodes[0], n_classes, n_feat, causal=causal, return_param_str=True)
+
+        return model
